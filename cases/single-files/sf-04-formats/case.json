@@ -1,0 +1,38 @@
+{
+  "title": "Output formats for a single file",
+  "tags": [
+    "single-file",
+    "format"
+  ],
+  "upstream": [
+    "ScanCmdTest#testScanCommandWithValidSarifFormatFlag",
+    "ScanCmdTest#testScanCommandWithInvalidFormatFlag",
+    "ScanCmdTest#testScanCommandWithFormatFlagCaseInsensitive"
+  ],
+  "steps": [
+    {
+      "name": "Default",
+      "run": "bal scan main.bal"
+    },
+    {
+      "name": "--format=json",
+      "run": "bal scan main.bal --format=json"
+    },
+    {
+      "name": "--format=sarif",
+      "run": "bal scan main.bal --format=sarif"
+    },
+    {
+      "name": "--format=SARIF (case)",
+      "run": "bal scan main.bal --format=SARIF"
+    },
+    {
+      "name": "--format=ballerina (legacy name)",
+      "run": "bal scan main.bal --format=ballerina"
+    },
+    {
+      "name": "--format=xml (invalid)",
+      "run": "bal scan main.bal --format=xml"
+    }
+  ]
+}

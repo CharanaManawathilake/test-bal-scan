@@ -1,0 +1,32 @@
+{
+  "title": "Package without Dependencies.toml",
+  "description": "0.13+ requires locked dependencies and asks to run bal build first; older versions resolve and scan.",
+  "tags": [
+    "package",
+    "dependencies"
+  ],
+  "upstream": [
+    "ScanCmdTest#testScanCommandRequiresDependenciesToml",
+    "test-resources/bal-project-without-dependencies-toml"
+  ],
+  "setup": [],
+  "steps": [
+    {
+      "name": "Scan",
+      "run": "bal scan"
+    },
+    {
+      "name": "--list-rules",
+      "run": "bal scan --list-rules"
+    },
+    {
+      "name": "bal build (creates Dependencies.toml)",
+      "run": "bal build",
+      "setup": true
+    },
+    {
+      "name": "Scan again",
+      "run": "bal scan"
+    }
+  ]
+}

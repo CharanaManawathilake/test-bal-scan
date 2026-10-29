@@ -1,0 +1,21 @@
+{
+  "title": "Scan.toml next to a single file",
+  "description": "Records whether a Scan.toml in the same folder affects a single-file scan (it should only apply to projects).",
+  "tags": [
+    "single-file",
+    "scan-toml"
+  ],
+  "upstream": [
+    "test-resources/single-file-project-with-config-file"
+  ],
+  "steps": [
+    {
+      "name": "Scan",
+      "run": "bal scan main.bal"
+    },
+    {
+      "name": "--list-rules",
+      "run": "bal scan main.bal --list-rules"
+    }
+  ]
+}

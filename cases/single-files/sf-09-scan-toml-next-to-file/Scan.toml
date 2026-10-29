@@ -1,0 +1,5 @@
+[rule]
+include = ["ballerina:1"]
+
+[suppression]
+enabled = false

@@ -1,0 +1,42 @@
+{
+  "title": "Reporting to a platform plugin declared in Scan.toml",
+  "description": "The playground \"recorder\" plugin writes what it receives to platform-recorder-output.json in the working directory.",
+  "tags": [
+    "package",
+    "platform"
+  ],
+  "upstream": [
+    "ScanCmdTest#testScanCommandWithPlatformPluginConfigurations",
+    "command-outputs/common/platform-plugin-arguments-output.txt",
+    "test-static-code-analysis-platform-plugins/*"
+  ],
+  "requires": {
+    "plugins": true
+  },
+  "steps": [
+    {
+      "name": "Declared platform is reported automatically",
+      "run": "bal scan"
+    },
+    {
+      "name": "--platforms=recorder",
+      "run": "bal scan --platforms=recorder"
+    },
+    {
+      "name": "--platforms=recorder,unknown",
+      "run": "bal scan --platforms=\"recorder, unknown\""
+    },
+    {
+      "name": "--platform-triggered (hidden flag used by platforms)",
+      "run": "bal scan --platform-triggered --platforms=recorder"
+    },
+    {
+      "name": "Platform + --scan-report",
+      "run": "bal scan --scan-report"
+    },
+    {
+      "name": "Platform + --exclude-rules",
+      "run": "bal scan --exclude-rules=ballerina:1"
+    }
+  ]
+}

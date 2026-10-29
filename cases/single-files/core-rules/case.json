@@ -1,0 +1,15 @@
+{
+  "title": "All core rules (ballerina:1 to ballerina:14) in one file",
+  "description": "core_rules.bal triggers every core rule once (ballerina:13 twice: a module-level and a local secret). The comment on each line names the rule it triggers.",
+  "tags": ["single-file", "core-rules"],
+  "upstream": [
+    "CoreRuleTest",
+    "test-resources/core-rules"
+  ],
+  "steps": [
+    { "name": "Scan", "run": "bal scan core_rules.bal" },
+    { "name": "SARIF", "run": "bal scan core_rules.bal --format=sarif" },
+    { "name": "Security rules only", "run": "bal scan core_rules.bal --include-rules=\"ballerina:13, ballerina:14\"" },
+    { "name": "--list-rules", "run": "bal scan core_rules.bal --list-rules" }
+  ]
+}

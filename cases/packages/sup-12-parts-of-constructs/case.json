@@ -1,0 +1,21 @@
+{
+  "title": "Suppressions on parameters, return types, fields, workers, etc.",
+  "tags": [
+    "package",
+    "suppression"
+  ],
+  "upstream": [
+    "SuppressionTest#testSuppressionsOnPartsOfConstructs",
+    "test-resources/bal-project-with-part-suppressions"
+  ],
+  "steps": [
+    {
+      "name": "Scan",
+      "run": "bal scan"
+    },
+    {
+      "name": "--ignore-suppressions",
+      "run": "bal scan --ignore-suppressions"
+    }
+  ]
+}

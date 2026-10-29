@@ -1,0 +1,25 @@
+{
+  "title": "Workspace: --list-rules and rule filters",
+  "tags": [
+    "workspace",
+    "rules"
+  ],
+  "steps": [
+    {
+      "name": "--list-rules",
+      "run": "bal scan --list-rules"
+    },
+    {
+      "name": "--include-rules",
+      "run": "bal scan --include-rules=\"ballerina:1, ballerina:13\""
+    },
+    {
+      "name": "--exclude-rules",
+      "run": "bal scan --exclude-rules=ballerina:1"
+    },
+    {
+      "name": "Include and exclude",
+      "run": "bal scan --include-rules=ballerina:1 --exclude-rules=ballerina:13"
+    }
+  ]
+}

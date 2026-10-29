@@ -1,0 +1,77 @@
+{
+  "title": "Invalid platform configurations",
+  "description": "Unknown --platforms without Scan.toml, unreachable/invalid plugin URLs, a platform without path, a missing local JAR.",
+  "tags": [
+    "package",
+    "platform",
+    "errors",
+    "network"
+  ],
+  "upstream": [
+    "ScanCmdTest#testScanCommandWithInvalidPlatformPluginConfigurations",
+    "command-outputs/*/invalid-platform-plugin-configurations.txt",
+    "test-resources/bal-project-with-invalid-platform-*"
+  ],
+  "requires": {
+    "plugins": true
+  },
+  "setup": [
+    {
+      "name": "Lock dependencies (no-scan-toml)",
+      "run": "bal build",
+      "cwd": "no-scan-toml"
+    },
+    {
+      "name": "Lock dependencies (unreachable-jar)",
+      "run": "bal build",
+      "cwd": "unreachable-jar"
+    },
+    {
+      "name": "Lock dependencies (invalid-url)",
+      "run": "bal build",
+      "cwd": "invalid-url"
+    },
+    {
+      "name": "Lock dependencies (missing-path)",
+      "run": "bal build",
+      "cwd": "missing-path"
+    },
+    {
+      "name": "Lock dependencies (local-jar-missing)",
+      "run": "bal build",
+      "cwd": "local-jar-missing"
+    }
+  ],
+  "steps": [
+    {
+      "name": "--platforms=examplePlatform without Scan.toml",
+      "run": "bal scan --platforms=examplePlatform",
+      "cwd": "no-scan-toml"
+    },
+    {
+      "name": "Unreachable plugin URL (example.com)",
+      "run": "bal scan",
+      "cwd": "unreachable-jar"
+    },
+    {
+      "name": "Plugin path without scheme",
+      "run": "bal scan",
+      "cwd": "invalid-url"
+    },
+    {
+      "name": "[[platform]] without path",
+      "run": "bal scan",
+      "cwd": "missing-path"
+    },
+    {
+      "name": "[[platform]] without path, --platforms=recorder",
+      "run": "bal scan --platforms=recorder",
+      "cwd": "missing-path"
+    },
+    {
+      "name": "Local JAR that does not exist",
+      "run": "bal scan",
+      "cwd": "local-jar-missing"
+    }
+  ]
+}

@@ -1,0 +1,7 @@
+[package]
+org = "playground"
+name = "config_path_core_only"
+version = "0.1.0"
+
+[scan]
+configPath = "config/custom-scan.toml"

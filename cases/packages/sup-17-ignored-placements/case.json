@@ -1,0 +1,17 @@
+{
+  "title": "Placements the scan cannot apply (warned and ignored)",
+  "tags": [
+    "package",
+    "suppression"
+  ],
+  "upstream": [
+    "SuppressionTest#testIgnoredSuppressionsAreReported",
+    "test-resources/bal-project-with-ignored-suppressions"
+  ],
+  "steps": [
+    {
+      "name": "Scan",
+      "run": "bal scan"
+    }
+  ]
+}

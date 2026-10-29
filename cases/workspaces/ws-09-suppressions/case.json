@@ -1,0 +1,29 @@
+{
+  "title": "Workspace with @scan:Suppress in a dependency package",
+  "tags": [
+    "workspace",
+    "suppression"
+  ],
+  "steps": [
+    {
+      "name": "Scan",
+      "run": "bal scan"
+    },
+    {
+      "name": "SARIF",
+      "run": "bal scan --format=sarif"
+    },
+    {
+      "name": "--scan-report",
+      "run": "bal scan --scan-report"
+    },
+    {
+      "name": "--ignore-suppressions",
+      "run": "bal scan --ignore-suppressions"
+    },
+    {
+      "name": "--require-suppression-rule-id",
+      "run": "bal scan --require-suppression-rule-id"
+    }
+  ]
+}

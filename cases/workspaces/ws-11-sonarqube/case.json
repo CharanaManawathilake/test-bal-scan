@@ -1,0 +1,33 @@
+{
+  "title": "Report a workspace to SonarQube",
+  "tags": [
+    "workspace",
+    "platform",
+    "sonarqube"
+  ],
+  "requires": {
+    "env": [
+      "SONAR_HOST_URL",
+      "SONAR_TOKEN",
+      "SONAR_PLATFORM_PLUGIN_PATH"
+    ]
+  },
+  "steps": [
+    {
+      "name": "bal scan",
+      "run": "bal scan",
+      "env": {
+        "SONAR_TOKEN": "${SONAR_TOKEN}",
+        "SONAR_HOST_URL": "${SONAR_HOST_URL}"
+      }
+    },
+    {
+      "name": "bal scan --platforms=sonarqube",
+      "run": "bal scan --platforms=sonarqube",
+      "env": {
+        "SONAR_TOKEN": "${SONAR_TOKEN}",
+        "SONAR_HOST_URL": "${SONAR_HOST_URL}"
+      }
+    }
+  ]
+}

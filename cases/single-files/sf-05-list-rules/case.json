@@ -1,0 +1,21 @@
+{
+  "title": "--list-rules with a single file",
+  "tags": [
+    "single-file",
+    "rules"
+  ],
+  "upstream": [
+    "ScanCmdTest#testScanCommandWithListRulesFlag",
+    "command-outputs/common/core-rules-output.txt"
+  ],
+  "steps": [
+    {
+      "name": "--list-rules with the file argument",
+      "run": "bal scan main.bal --list-rules"
+    },
+    {
+      "name": "--list-rules before the file",
+      "run": "bal scan --list-rules main.bal"
+    }
+  ]
+}

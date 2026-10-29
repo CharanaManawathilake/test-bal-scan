@@ -1,0 +1,25 @@
+{
+  "title": "Scanning one file of a package is rejected",
+  "tags": [
+    "package",
+    "errors"
+  ],
+  "upstream": [
+    "ScanCmdTest#testScanCommandWorkspacePackageFileArgument (package variant)"
+  ],
+  "steps": [
+    {
+      "name": "Root file",
+      "run": "bal scan main.bal"
+    },
+    {
+      "name": "Module file",
+      "run": "bal scan modules/util/util.bal"
+    },
+    {
+      "name": "Module file from inside the module",
+      "run": "bal scan util.bal",
+      "cwd": "modules/util"
+    }
+  ]
+}

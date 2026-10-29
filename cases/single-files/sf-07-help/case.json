@@ -1,0 +1,25 @@
+{
+  "title": "Help output",
+  "tags": [
+    "single-file",
+    "help"
+  ],
+  "upstream": [
+    "ScanCmdTest#testScanCommandWithHelpFlag",
+    "command-outputs/common/tool-help.txt"
+  ],
+  "steps": [
+    {
+      "name": "bal scan --help",
+      "run": "bal scan --help"
+    },
+    {
+      "name": "bal scan -h",
+      "run": "bal scan -h"
+    },
+    {
+      "name": "bal help scan",
+      "run": "bal help scan"
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "title": "Empty package (no .bal files)",
+  "tags": [
+    "package",
+    "errors"
+  ],
+  "upstream": [
+    "ScanCmdTest#testScanCommandEmptyProject",
+    "test-resources/empty-bal-project"
+  ],
+  "setup": [],
+  "steps": [
+    {
+      "name": "Scan",
+      "run": "bal scan"
+    },
+    {
+      "name": "--list-rules",
+      "run": "bal scan --list-rules"
+    }
+  ]
+}

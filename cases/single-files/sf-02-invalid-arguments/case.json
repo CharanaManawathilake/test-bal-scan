@@ -1,0 +1,39 @@
+{
+  "title": "Invalid arguments: no argument, directory argument, too many arguments, missing file",
+  "tags": [
+    "single-file",
+    "errors"
+  ],
+  "upstream": [
+    "ScanCmdTest#testScanCommandSingleFileProjectWithoutArgument",
+    "ScanCmdTest#testScanCommandSingleFileProjectWithDirectoryAsArgument",
+    "ScanCmdTest#testScanCommandSingleFileProjectWithTooManyArguments",
+    "ScanCmdTest#testScanCommandWithListRulesFlagWithoutArgumentOutsideBallerinaProject"
+  ],
+  "steps": [
+    {
+      "name": "No argument in a folder that only has a .bal file",
+      "run": "bal scan"
+    },
+    {
+      "name": "Directory as argument",
+      "run": "bal scan ."
+    },
+    {
+      "name": "Too many arguments",
+      "run": "bal scan main.bal argument2"
+    },
+    {
+      "name": "File that does not exist",
+      "run": "bal scan missing.bal"
+    },
+    {
+      "name": "Non .bal file",
+      "run": "bal scan not-bal.txt"
+    },
+    {
+      "name": "--list-rules outside a Ballerina project",
+      "run": "bal scan --list-rules"
+    }
+  ]
+}

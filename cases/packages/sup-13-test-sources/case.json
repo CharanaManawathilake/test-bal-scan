@@ -1,0 +1,17 @@
+{
+  "title": "Suppressions inside tests/",
+  "tags": [
+    "package",
+    "suppression"
+  ],
+  "upstream": [
+    "SuppressionTest#testSuppressionsInTestDocuments",
+    "test-resources/bal-project-with-test-suppressions"
+  ],
+  "steps": [
+    {
+      "name": "Scan",
+      "run": "bal scan"
+    }
+  ]
+}

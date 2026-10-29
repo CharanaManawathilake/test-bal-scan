@@ -1,0 +1,35 @@
+{
+  "title": "Scan.toml [rule] filters (include-and-exclude) with custom analyzers",
+  "description": "Upstream fixture: Scan.toml declares exampleOrg/ballerina/ballerinax analyzers plus a [rule] table.",
+  "tags": [
+    "package",
+    "scan-toml",
+    "rules",
+    "analyzer"
+  ],
+  "upstream": [
+    "ScanCmdTest#testScanCommandWithIncludeAndExcludeRulesScanTomlConfigurations",
+    "test-resources/bal-project-with-include-exclude-rule-configurations"
+  ],
+  "requires": {
+    "plugins": true
+  },
+  "steps": [
+    {
+      "name": "Scan",
+      "run": "bal scan"
+    },
+    {
+      "name": "--list-rules",
+      "run": "bal scan --list-rules"
+    },
+    {
+      "name": "Scan.toml + CLI include",
+      "run": "bal scan --include-rules=ballerina:13"
+    },
+    {
+      "name": "Scan.toml + CLI exclude",
+      "run": "bal scan --exclude-rules=ballerina:13"
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "title": "Non-boolean [suppression] value in Scan.toml",
+  "tags": [
+    "package",
+    "suppression"
+  ],
+  "upstream": [
+    "SuppressionTest#testInvalidSuppressionSettingsFailTheScan",
+    "test-resources/bal-project-with-invalid-suppression-settings"
+  ],
+  "steps": [
+    {
+      "name": "Scan",
+      "run": "bal scan"
+    }
+  ]
+}

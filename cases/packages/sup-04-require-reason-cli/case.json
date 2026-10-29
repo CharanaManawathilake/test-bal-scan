@@ -1,0 +1,29 @@
+{
+  "title": "Requirements from the command line",
+  "tags": [
+    "package",
+    "suppression"
+  ],
+  "upstream": [
+    "SuppressionTest#testRequireReasonFromCommandLine",
+    "test-resources/bal-project-with-suppressions"
+  ],
+  "steps": [
+    {
+      "name": "--require-suppression-reason",
+      "run": "bal scan --require-suppression-reason"
+    },
+    {
+      "name": "--require-suppression-rule-id",
+      "run": "bal scan --require-suppression-rule-id"
+    },
+    {
+      "name": "Both",
+      "run": "bal scan --require-suppression-reason --require-suppression-rule-id"
+    },
+    {
+      "name": "Both + --ignore-suppressions",
+      "run": "bal scan --require-suppression-reason --require-suppression-rule-id --ignore-suppressions"
+    }
+  ]
+}

@@ -1,0 +1,3 @@
+# A Scan.toml at the workspace root: does it apply?
+[rule]
+include = ["ballerina:13"]

@@ -1,0 +1,17 @@
+{
+  "title": "Unknown key in [suppression]",
+  "tags": [
+    "package",
+    "suppression"
+  ],
+  "upstream": [
+    "SuppressionTest#testInvalidSuppressionSettingsFailTheScan",
+    "test-resources/bal-project-with-unknown-suppression-setting"
+  ],
+  "steps": [
+    {
+      "name": "Scan",
+      "run": "bal scan"
+    }
+  ]
+}

@@ -1,0 +1,26 @@
+{
+  "title": "Scan.toml with invalid [[analyzer]] / [[platform]] entries mixed with valid ones",
+  "tags": [
+    "package",
+    "scan-toml",
+    "analyzer",
+    "errors"
+  ],
+  "upstream": [
+    "ScanUtilsTest",
+    "test-resources/bal-project-with-config-file"
+  ],
+  "requires": {
+    "plugins": true
+  },
+  "steps": [
+    {
+      "name": "Scan",
+      "run": "bal scan"
+    },
+    {
+      "name": "--list-rules",
+      "run": "bal scan --list-rules"
+    }
+  ]
+}

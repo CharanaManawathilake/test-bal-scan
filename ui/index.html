@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>bal scan playground</title>
+  <link rel="stylesheet" href="/ui/styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">bal scan playground</div>
+    <label class="field">Run
+      <select id="runSelect"></select>
+    </label>
+    <div id="runMeta" class="run-meta"></div>
+    <div class="spacer"></div>
+    <a id="runTerminal" class="btn ghost" target="_blank">terminal.txt</a>
+    <button id="newRunBtn" class="btn primary">New run</button>
+  </header>
+
+  <main class="layout">
+    <aside class="sidebar">
+      <input id="search" type="search" placeholder="Filter cases (name, title, tag)">
+      <div class="seg" id="categoryFilter">
+        <button data-cat="" class="on">All</button>
+        <button data-cat="single-files">Single files</button>
+        <button data-cat="packages">Packages</button>
+        <button data-cat="workspaces">Workspaces</button>
+      </div>
+      <select id="tagFilter"><option value="">All tags</option></select>
+      <div id="versionHeader" class="version-header"></div>
+      <ul id="caseList" class="case-list"></ul>
+    </aside>
+
+    <section id="detail" class="detail"></section>
+  </main>
+
+  <dialog id="runDialog">
+    <form id="runForm" method="dialog">
+      <h2>Start a run</h2>
+      <p class="muted">Runs <code>node runner/run.mjs</code> with these values (empty = take them from <code>.env</code>).</p>
+      <label>Scan versions <input name="versions" placeholder="0.12.0,0.13.0-SNAPSHOT@local"></label>
+      <label>Cases <input name="cases" placeholder="packages/*,sf-0*"></label>
+      <label>Tags <input name="tags" placeholder="suppression,core-rules"></label>
+      <label>Skip tags <input name="skipTags" placeholder="sonarqube,network"></label>
+      <label>Label <input name="label" placeholder="optional run name"></label>
+      <div class="dialog-actions">
+        <button type="button" id="buildPluginsBtn" class="btn ghost">Build test plugins</button>
+        <span class="spacer"></span>
+        <button type="button" id="closeDialog" class="btn ghost">Close</button>
+        <button type="submit" id="startRun" class="btn primary">Start</button>
+      </div>
+      <pre id="jobLog" class="job-log"></pre>
+    </form>
+  </dialog>
+
+  <script src="/ui/app.js" type="module"></script>
+</body>
+</html>

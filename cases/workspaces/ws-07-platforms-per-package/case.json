@@ -1,0 +1,29 @@
+{
+  "title": "Workspace where each package reports to its own platform",
+  "description": "first-package declares \"recorder\", second-package \"recorder2\"; each writes platform-<name>-output.json.",
+  "tags": [
+    "workspace",
+    "platform"
+  ],
+  "upstream": [
+    "ScanCmdTest#testScanCommandInWorkspaceReportsEachPackageToItsPlatforms",
+    "test-resources/workspace-with-platforms"
+  ],
+  "requires": {
+    "plugins": true
+  },
+  "steps": [
+    {
+      "name": "Scan",
+      "run": "bal scan"
+    },
+    {
+      "name": "--platforms=recorder",
+      "run": "bal scan --platforms=recorder"
+    },
+    {
+      "name": "--scan-report",
+      "run": "bal scan --scan-report"
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "title": "Unknown rules together with requirements",
+  "tags": [
+    "package",
+    "suppression"
+  ],
+  "upstream": [
+    "SuppressionTest#testUnknownRulesFailTheScan",
+    "test-resources/bal-project-with-unknown-rules-and-requirements"
+  ],
+  "steps": [
+    {
+      "name": "Scan",
+      "run": "bal scan"
+    }
+  ]
+}

@@ -1,0 +1,39 @@
+{
+  "title": "Scan.toml [[analyzer]] custom static code analyzers (central, versioned, local repository)",
+  "description": "Analyzers are the playground builds of upstream test plugins (each reports rule 1 once per file).",
+  "tags": [
+    "package",
+    "analyzer",
+    "scan-toml"
+  ],
+  "upstream": [
+    "ProjectAnalyzerTest",
+    "test-resources/bal-project-with-analyzer-configurations",
+    "test-compiler-plugins/*"
+  ],
+  "requires": {
+    "plugins": true
+  },
+  "steps": [
+    {
+      "name": "--list-rules (core + external rules)",
+      "run": "bal scan --list-rules"
+    },
+    {
+      "name": "Scan",
+      "run": "bal scan"
+    },
+    {
+      "name": "Include an external rule",
+      "run": "bal scan --include-rules=\"exampleOrg/example_module_static_code_analyzer:1\""
+    },
+    {
+      "name": "Exclude external rules",
+      "run": "bal scan --exclude-rules=\"exampleOrg/example_module_static_code_analyzer:1, ballerina/example_module_static_code_analyzer:1, ballerinax/example_module_static_code_analyzer:1\""
+    },
+    {
+      "name": "SARIF with external rules",
+      "run": "bal scan --format=sarif"
+    }
+  ]
+}

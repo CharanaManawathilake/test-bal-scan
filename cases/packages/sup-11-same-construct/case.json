@@ -1,0 +1,21 @@
+{
+  "title": "Several suppressions on the same construct",
+  "tags": [
+    "package",
+    "suppression"
+  ],
+  "upstream": [
+    "SuppressionTest#testRuleSpecificSuppressionPreferredOnSameConstruct",
+    "test-resources/bal-project-with-same-construct-suppressions"
+  ],
+  "steps": [
+    {
+      "name": "Scan",
+      "run": "bal scan"
+    },
+    {
+      "name": "SARIF",
+      "run": "bal scan --format=sarif"
+    }
+  ]
+}

@@ -1,0 +1,26 @@
+{
+  "title": "Analyzer with an invalid rules.json (invalid-analyzer-rules)",
+  "tags": [
+    "package",
+    "analyzer",
+    "errors"
+  ],
+  "upstream": [
+    "ProjectAnalyzerTest",
+    "test-resources/bal-project-with-invalid-external-analyzer-rules",
+    "command-outputs/common/invalid-json-format-for-rules.txt"
+  ],
+  "requires": {
+    "plugins": true
+  },
+  "steps": [
+    {
+      "name": "Scan",
+      "run": "bal scan"
+    },
+    {
+      "name": "--list-rules",
+      "run": "bal scan --list-rules"
+    }
+  ]
+}

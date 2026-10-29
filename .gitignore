@@ -1,0 +1,12 @@
+# Local settings (may hold the SonarQube token)
+.env
+
+# Everything a run produces
+results/
+
+# Test plugin build output
+tools/test-plugins/build/
+tools/test-plugins/out/
+
+# Ballerina build output inside fixtures, in case a case folder is built in place
+target/

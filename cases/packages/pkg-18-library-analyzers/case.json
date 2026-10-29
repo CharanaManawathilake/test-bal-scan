@@ -1,0 +1,35 @@
+{
+  "title": "Rules contributed by standard library analyzers (http, file, os, crypto)",
+  "description": "Imports of libraries that ship static code analyzers add their rules to --list-rules and their issues to the scan.",
+  "tags": [
+    "package",
+    "analyzer",
+    "library-rules",
+    "network"
+  ],
+  "upstream": [
+    "docs/static-code-analysis-rules/*"
+  ],
+  "steps": [
+    {
+      "name": "--list-rules",
+      "run": "bal scan --list-rules"
+    },
+    {
+      "name": "Scan",
+      "run": "bal scan"
+    },
+    {
+      "name": "Only library rules (exclude core)",
+      "run": "bal scan --exclude-rules=\"ballerina:1, ballerina:2, ballerina:3, ballerina:4, ballerina:5, ballerina:6, ballerina:7, ballerina:8, ballerina:9, ballerina:10, ballerina:11, ballerina:12, ballerina:13, ballerina:14\""
+    },
+    {
+      "name": "SARIF",
+      "run": "bal scan --format=sarif"
+    },
+    {
+      "name": "HTML report",
+      "run": "bal scan --scan-report"
+    }
+  ]
+}

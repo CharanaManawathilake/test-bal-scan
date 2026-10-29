@@ -1,0 +1,17 @@
+{
+  "title": "Workspace with an empty package and a package that does not compile",
+  "tags": [
+    "workspace",
+    "errors"
+  ],
+  "steps": [
+    {
+      "name": "Scan",
+      "run": "bal scan"
+    },
+    {
+      "name": "--list-rules",
+      "run": "bal scan --list-rules"
+    }
+  ]
+}

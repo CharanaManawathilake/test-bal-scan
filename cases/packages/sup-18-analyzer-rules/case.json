@@ -1,0 +1,25 @@
+{
+  "title": "Suppressing rules of a Scan.toml analyzer",
+  "tags": [
+    "package",
+    "suppression",
+    "analyzer"
+  ],
+  "upstream": [
+    "SuppressionTest#testScanTomlAnalyzerRulesCheckedUnderScan",
+    "test-resources/bal-project-with-analyzer-suppressions"
+  ],
+  "requires": {
+    "plugins": true
+  },
+  "steps": [
+    {
+      "name": "Scan",
+      "run": "bal scan"
+    },
+    {
+      "name": "--ignore-suppressions",
+      "run": "bal scan --ignore-suppressions"
+    }
+  ]
+}

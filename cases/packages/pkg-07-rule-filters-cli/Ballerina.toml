@@ -1,0 +1,4 @@
+[package]
+org = "playground"
+name = "rule_filters_cli"
+version = "0.1.0"

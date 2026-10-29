@@ -1,0 +1,18 @@
+{
+  "title": "Workspace packages with their own Scan.toml (and one at the workspace root)",
+  "tags": [
+    "workspace",
+    "scan-toml",
+    "rules"
+  ],
+  "steps": [
+    {
+      "name": "Scan",
+      "run": "bal scan"
+    },
+    {
+      "name": "CLI include on top",
+      "run": "bal scan --include-rules=ballerina:14"
+    }
+  ]
+}

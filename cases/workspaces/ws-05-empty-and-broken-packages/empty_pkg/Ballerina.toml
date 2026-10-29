@@ -1,0 +1,4 @@
+[package]
+org = "playground"
+name = "empty_pkg"
+version = "0.1.0"

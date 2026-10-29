@@ -1,0 +1,4 @@
+[package]
+org = "playground"
+name = "target_dir_and_report"
+version = "0.1.0"

@@ -1,0 +1,21 @@
+{
+  "title": "Package that does not compile",
+  "tags": [
+    "package",
+    "errors"
+  ],
+  "upstream": [
+    "ScanCmdTest#testScanCommandWithCompilationErrors",
+    "test-resources/bal-project-with-compilation-errors"
+  ],
+  "steps": [
+    {
+      "name": "Scan",
+      "run": "bal scan"
+    },
+    {
+      "name": "--list-rules",
+      "run": "bal scan --list-rules"
+    }
+  ]
+}

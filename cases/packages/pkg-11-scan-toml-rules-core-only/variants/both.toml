@@ -1,0 +1,3 @@
+[rule]
+include = ["ballerina:1"]
+exclude = ["ballerina:13"]

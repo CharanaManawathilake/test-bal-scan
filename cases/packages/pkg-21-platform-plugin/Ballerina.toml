@@ -1,0 +1,4 @@
+[package]
+org = "playground"
+name = "platform_plugin"
+version = "0.1.0"

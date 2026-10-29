@@ -1,0 +1,41 @@
+{
+  "title": "@scan:Suppress in a single file",
+  "description": "Suppressed issues are dropped from the console; unmatched suppressions warn. Older versions do not know the annotation.",
+  "tags": [
+    "single-file",
+    "suppression"
+  ],
+  "upstream": [
+    "SuppressionTest (adapted to a single file)"
+  ],
+  "steps": [
+    {
+      "name": "Scan",
+      "run": "bal scan main.bal"
+    },
+    {
+      "name": "--ignore-suppressions",
+      "run": "bal scan main.bal --ignore-suppressions"
+    },
+    {
+      "name": "--format=sarif",
+      "run": "bal scan main.bal --format=sarif"
+    },
+    {
+      "name": "Without reasons/rule ids, no requirements",
+      "run": "bal scan requirements.bal"
+    },
+    {
+      "name": "--require-suppression-reason",
+      "run": "bal scan requirements.bal --require-suppression-reason"
+    },
+    {
+      "name": "--require-suppression-rule-id",
+      "run": "bal scan requirements.bal --require-suppression-rule-id"
+    },
+    {
+      "name": "Requirements + --ignore-suppressions",
+      "run": "bal scan requirements.bal --require-suppression-reason --ignore-suppressions"
+    }
+  ]
+}

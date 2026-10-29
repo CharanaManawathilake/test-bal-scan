@@ -1,0 +1,4 @@
+[package]
+org = "playground"
+name = "greeter_lib"
+version = "0.1.0"

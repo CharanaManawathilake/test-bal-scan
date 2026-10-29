@@ -1,0 +1,30 @@
+{
+  "title": "Workspace: SARIF, --target-dir and --scan-report",
+  "tags": [
+    "workspace",
+    "format",
+    "report"
+  ],
+  "upstream": [
+    "ScanCmdTest#testScanCommandInWorkspaceWithSarif",
+    "ScanCmdTest#testScanReportInWorkspaceListsAllAnalyzedFiles"
+  ],
+  "steps": [
+    {
+      "name": "--format=sarif",
+      "run": "bal scan --format=sarif"
+    },
+    {
+      "name": "--target-dir",
+      "run": "bal scan --target-dir=results"
+    },
+    {
+      "name": "--scan-report",
+      "run": "bal scan --scan-report"
+    },
+    {
+      "name": "--scan-report --format=sarif --target-dir",
+      "run": "bal scan --scan-report --format=sarif --target-dir=sarif-report"
+    }
+  ]
+}

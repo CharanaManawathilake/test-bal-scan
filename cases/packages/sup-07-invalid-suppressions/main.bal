@@ -1,0 +1,30 @@
+import ballerina/scan;
+
+const string KNOWN_RULE = "ballerina:1";
+const string UNKNOWN_RULE = "ballerina:999";
+
+public function main() {
+    @scan:Suppress {rules: [KNOWN_RULE], reason: "Valid rule through a constant"}
+    int a = 1;
+    @scan:Suppress {rules: ["ballerina:999"], reason: "Unknown core rule"}
+    int b = 2;
+    @scan:Suppress {rules: [UNKNOWN_RULE], reason: "Unknown rule through a constant"}
+    int c = 3;
+    @scan:Suppress {rules: ["http:1"], reason: "Malformed rule ID"}
+    int d = 4;
+    @scan:Suppress {rules: ["acme/lint:1"], reason: "Provider is not a dependency"}
+    int e = 5;
+    @scan:Suppress {rules: ["ballerina:1", "ballerina:1"], reason: "Duplicate rule"}
+    int f = 6;
+    @scan:Suppress {rules: ["ballerina:1"], reason: " "}
+    int g = 7;
+    @scan:Suppress {rules: [], reason: "Empty rule list"}
+    int h = 8;
+    @scan:Suppress {rules: RULE_LIST, reason: "Constant list with a malformed rule"}
+    int i = 9;
+    @scan:Suppress {rules: [string `ballerina:1`], reason: "Template that is not a constant"}
+    int j = 10;
+    _ = a + b + c + d + e + f + g + h + i + j;
+}
+
+const RULE_LIST = ["ballerina:1", "http:1"];

@@ -1,0 +1,45 @@
+{
+  "title": "Report formats for a package",
+  "tags": [
+    "package",
+    "format"
+  ],
+  "upstream": [
+    "ScanCmdTest#testScanCommandWithValidJsonFormatFlag",
+    "ScanCmdTest#testScanCommandWithValidBallerinaFormatFlag",
+    "ScanCmdTest#testScanCommandWithValidSarifFormatFlag",
+    "ScanCmdTest#testScanCommandWithInvalidFormatFlag",
+    "ScanCmdTest#testScanCommandWithFormatFlagCaseInsensitive",
+    "ScanCmdTest#testScanCommandDefaultFormatBehavior"
+  ],
+  "steps": [
+    {
+      "name": "Default",
+      "run": "bal scan"
+    },
+    {
+      "name": "--format=json",
+      "run": "bal scan --format=json"
+    },
+    {
+      "name": "--format=ballerina",
+      "run": "bal scan --format=ballerina"
+    },
+    {
+      "name": "--format=sarif",
+      "run": "bal scan --format=sarif"
+    },
+    {
+      "name": "--format=Sarif (case)",
+      "run": "bal scan --format=Sarif"
+    },
+    {
+      "name": "--format=sarif --target-dir",
+      "run": "bal scan --format=sarif --target-dir=sarif-out"
+    },
+    {
+      "name": "--format=xml (invalid)",
+      "run": "bal scan --format=xml"
+    }
+  ]
+}

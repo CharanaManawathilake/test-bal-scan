@@ -1,0 +1,3 @@
+[[platform]]
+name = "recorder"
+path = "does/not/exist.jar"

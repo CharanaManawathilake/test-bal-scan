@@ -1,0 +1,4 @@
+[package]
+org = "playground"
+name = "library_analyzers"
+version = "0.1.0"

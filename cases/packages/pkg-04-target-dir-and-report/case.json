@@ -1,0 +1,35 @@
+{
+  "title": "--target-dir and --scan-report (HTML report)",
+  "description": "Open the generated scan_report.html files from the \"files\" list to view each HTML report.",
+  "tags": [
+    "package",
+    "report"
+  ],
+  "upstream": [
+    "ScanCmdTest#testScanReportWithFullRuleMetadata",
+    "ScanCmdTest#testScanReportGroupsIssuesByFile",
+    "ScanCmdTest#testScanCommandWithFormatFlagAndTargetDir"
+  ],
+  "steps": [
+    {
+      "name": "--target-dir (relative)",
+      "run": "bal scan --target-dir=results"
+    },
+    {
+      "name": "--target-dir (absolute)",
+      "run": "bal scan --target-dir=\"${WORK_DIR_NATIVE}/abs-results\""
+    },
+    {
+      "name": "--scan-report",
+      "run": "bal scan --scan-report"
+    },
+    {
+      "name": "--scan-report --target-dir",
+      "run": "bal scan --scan-report --target-dir=report-out"
+    },
+    {
+      "name": "--scan-report --format=sarif",
+      "run": "bal scan --scan-report --format=sarif --target-dir=sarif-report"
+    }
+  ]
+}

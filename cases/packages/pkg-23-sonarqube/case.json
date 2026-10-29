@@ -1,0 +1,37 @@
+{
+  "title": "Report a package to SonarQube",
+  "description": "Uses SONAR_HOST_URL, SONAR_TOKEN and SONAR_PLATFORM_PLUGIN_PATH from .env. The project key is printed in the generated sonar-project.properties; check the SonarQube dashboard for the result.",
+  "tags": [
+    "package",
+    "platform",
+    "sonarqube"
+  ],
+  "upstream": [
+    "sonar-platform-plugin (ballerina-platform/sonar-ballerina)"
+  ],
+  "requires": {
+    "env": [
+      "SONAR_HOST_URL",
+      "SONAR_TOKEN",
+      "SONAR_PLATFORM_PLUGIN_PATH"
+    ]
+  },
+  "steps": [
+    {
+      "name": "bal scan (platform declared in Scan.toml)",
+      "run": "bal scan",
+      "env": {
+        "SONAR_TOKEN": "${SONAR_TOKEN}",
+        "SONAR_HOST_URL": "${SONAR_HOST_URL}"
+      }
+    },
+    {
+      "name": "bal scan --platforms=sonarqube",
+      "run": "bal scan --platforms=sonarqube",
+      "env": {
+        "SONAR_TOKEN": "${SONAR_TOKEN}",
+        "SONAR_HOST_URL": "${SONAR_HOST_URL}"
+      }
+    }
+  ]
+}

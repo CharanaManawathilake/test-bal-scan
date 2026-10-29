@@ -1,0 +1,27 @@
+{
+  "title": "Workspace without Dependencies.toml files",
+  "tags": [
+    "workspace",
+    "dependencies"
+  ],
+  "setup": [],
+  "steps": [
+    {
+      "name": "Scan",
+      "run": "bal scan"
+    },
+    {
+      "name": "--list-rules",
+      "run": "bal scan --list-rules"
+    },
+    {
+      "name": "bal build",
+      "run": "bal build",
+      "setup": true
+    },
+    {
+      "name": "Scan again",
+      "run": "bal scan"
+    }
+  ]
+}

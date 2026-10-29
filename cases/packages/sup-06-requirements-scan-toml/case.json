@@ -1,0 +1,26 @@
+{
+  "title": "requireReason / requireRuleId in Scan.toml",
+  "tags": [
+    "package",
+    "suppression"
+  ],
+  "upstream": [
+    "SuppressionTest#testRequirementsFromScanToml",
+    "SuppressionTest#testIgnoredSuppressionsDoNotFailTheScan",
+    "test-resources/bal-project-with-suppression-requirements"
+  ],
+  "steps": [
+    {
+      "name": "Scan",
+      "run": "bal scan"
+    },
+    {
+      "name": "--scan-report (fails before any report)",
+      "run": "bal scan --scan-report"
+    },
+    {
+      "name": "--ignore-suppressions",
+      "run": "bal scan --ignore-suppressions"
+    }
+  ]
+}

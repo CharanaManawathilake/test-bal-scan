@@ -1,0 +1,4 @@
+[package]
+org = "playground"
+name = "file_inside_package"
+version = "0.1.0"

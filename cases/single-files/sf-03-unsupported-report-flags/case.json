@@ -1,0 +1,26 @@
+{
+  "title": "--target-dir and --scan-report are ignored for single files (warnings)",
+  "tags": [
+    "single-file",
+    "report"
+  ],
+  "upstream": [
+    "ScanCmdTest#testScanCommandWithTargetDirFlagOnSingleFileProject",
+    "ScanCmdTest#testScanCommandWithScanReportFlagOnSingleFileProject",
+    "command-outputs/common/single-file-report-generation.txt"
+  ],
+  "steps": [
+    {
+      "name": "--target-dir",
+      "run": "bal scan main.bal --target-dir=results"
+    },
+    {
+      "name": "--scan-report",
+      "run": "bal scan main.bal --scan-report"
+    },
+    {
+      "name": "Both",
+      "run": "bal scan main.bal --target-dir=results --scan-report"
+    }
+  ]
+}

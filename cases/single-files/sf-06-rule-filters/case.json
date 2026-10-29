@@ -1,0 +1,42 @@
+{
+  "title": "--include-rules / --exclude-rules on a single file",
+  "tags": [
+    "single-file",
+    "rules"
+  ],
+  "upstream": [
+    "ScanCmdTest#testScanCommandWithIncludeRulesFlag",
+    "ScanCmdTest#testScanCommandWithExcludeRulesFlag",
+    "ScanCmdTest#testScanCommandWithIncludeAndExcludeRulesFlags"
+  ],
+  "steps": [
+    {
+      "name": "Include one rule",
+      "run": "bal scan main.bal --include-rules=ballerina:1"
+    },
+    {
+      "name": "Include several rules (with spaces)",
+      "run": "bal scan main.bal --include-rules=\"ballerina:1, ballerina:13, ballerina:14\""
+    },
+    {
+      "name": "Exclude one rule",
+      "run": "bal scan main.bal --exclude-rules=ballerina:1"
+    },
+    {
+      "name": "Exclude several rules",
+      "run": "bal scan main.bal --exclude-rules=\"ballerina:1, ballerina:13\""
+    },
+    {
+      "name": "Include and exclude together",
+      "run": "bal scan main.bal --include-rules=ballerina:1 --exclude-rules=ballerina:13"
+    },
+    {
+      "name": "Unknown rule id",
+      "run": "bal scan main.bal --include-rules=ballerina:999"
+    },
+    {
+      "name": "Malformed rule id",
+      "run": "bal scan main.bal --include-rules=notarule"
+    }
+  ]
+}

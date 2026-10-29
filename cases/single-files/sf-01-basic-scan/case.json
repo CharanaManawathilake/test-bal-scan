@@ -1,0 +1,36 @@
+{
+  "title": "Scan a standalone .bal file (relative, absolute and from another directory)",
+  "description": "Single-file projects: issues are printed to the console only; no report is written.",
+  "tags": [
+    "single-file",
+    "basics"
+  ],
+  "upstream": [
+    "ScanCmdTest#testScanCommandSingleFileProject",
+    "test-resources/valid-single-file-project"
+  ],
+  "steps": [
+    {
+      "name": "Clean file, relative path",
+      "run": "bal scan main.bal"
+    },
+    {
+      "name": "File with issues, relative path",
+      "run": "bal scan issues.bal"
+    },
+    {
+      "name": "File with issues, absolute path",
+      "run": "bal scan \"${WORK_DIR_NATIVE}/issues.bal\""
+    },
+    {
+      "name": "File with issues, run from a sub directory",
+      "run": "bal scan ../issues.bal",
+      "cwd": "elsewhere"
+    },
+    {
+      "name": "stdout redirected to a file",
+      "run": "bal scan issues.bal 1> stdout-issues.json",
+      "note": "Shows what lands on stdout vs stderr; open stdout-issues.json in the work folder."
+    }
+  ]
+}

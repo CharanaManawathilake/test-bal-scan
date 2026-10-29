@@ -1,0 +1,18 @@
+{
+  "name": "bal-scan-playground",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Records how `bal scan` behaves for single files, packages and workspaces across scan tool versions",
+  "type": "module",
+  "scripts": {
+    "setup:plugins": "node tools/build-test-plugins.mjs",
+    "clean:plugins": "node tools/build-test-plugins.mjs --clean",
+    "test": "node runner/run.mjs",
+    "run:all": "node runner/run.mjs",
+    "ui": "node runner/serve.mjs",
+    "list": "node runner/list-cases.mjs"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

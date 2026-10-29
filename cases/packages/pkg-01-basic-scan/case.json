@@ -1,0 +1,39 @@
+{
+  "title": "Scan a package (default module, sub module, tests)",
+  "description": "Default run prints the issues and writes target/report/scan_results.json. Also scans the package by path from outside.",
+  "tags": [
+    "package",
+    "basics"
+  ],
+  "upstream": [
+    "ScanCmdTest#testScanCommandProject",
+    "ScanCmdTest#testScanCommandProjectWithArgument",
+    "ScanCmdTest#testScanCommandSaveToDirectoryMethodWhenIssuePresent",
+    "SuppressionTest#testConsoleOutputStreams"
+  ],
+  "steps": [
+    {
+      "name": "bal scan in the package root",
+      "run": "bal scan"
+    },
+    {
+      "name": "bal scan . ",
+      "run": "bal scan ."
+    },
+    {
+      "name": "Package path from the parent folder",
+      "run": "bal scan work",
+      "cwd": ".."
+    },
+    {
+      "name": "Absolute package path",
+      "run": "bal scan \"${WORK_DIR_NATIVE}\"",
+      "cwd": ".."
+    },
+    {
+      "name": "stdout redirected to a file",
+      "run": "bal scan 1> stdout-issues.json",
+      "note": "Newer versions keep stdout to the issues only."
+    }
+  ]
+}

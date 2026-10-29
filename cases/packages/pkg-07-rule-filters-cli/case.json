@@ -1,0 +1,42 @@
+{
+  "title": "--include-rules / --exclude-rules in a package",
+  "tags": [
+    "package",
+    "rules"
+  ],
+  "upstream": [
+    "ScanCmdTest#testScanCommandWithIncludeRulesFlag",
+    "ScanCmdTest#testScanCommandWithExcludeRulesFlag",
+    "ScanCmdTest#testScanCommandWithIncludeAndExcludeRulesFlags"
+  ],
+  "steps": [
+    {
+      "name": "Include one",
+      "run": "bal scan --include-rules=ballerina:1"
+    },
+    {
+      "name": "Include several",
+      "run": "bal scan --include-rules=\"ballerina:1, ballerina:13\""
+    },
+    {
+      "name": "Exclude one",
+      "run": "bal scan --exclude-rules=ballerina:1"
+    },
+    {
+      "name": "Exclude several",
+      "run": "bal scan --exclude-rules=\"ballerina:1, ballerina:13, ballerina:14\""
+    },
+    {
+      "name": "Include and exclude",
+      "run": "bal scan --include-rules=ballerina:1 --exclude-rules=ballerina:13"
+    },
+    {
+      "name": "Unknown rule",
+      "run": "bal scan --include-rules=ballerina:999"
+    },
+    {
+      "name": "Library rule id (not used by the package)",
+      "run": "bal scan --include-rules=ballerina/http:1"
+    }
+  ]
+}

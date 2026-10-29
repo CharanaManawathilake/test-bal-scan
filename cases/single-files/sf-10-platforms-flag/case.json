@@ -1,0 +1,17 @@
+{
+  "title": "--platforms on a single file (no Scan.toml can declare one)",
+  "tags": [
+    "single-file",
+    "platform"
+  ],
+  "steps": [
+    {
+      "name": "--platforms=sonarqube",
+      "run": "bal scan main.bal --platforms=sonarqube"
+    },
+    {
+      "name": "--platforms with two names",
+      "run": "bal scan main.bal --platforms=\"sonarqube, semgrep\""
+    }
+  ]
+}

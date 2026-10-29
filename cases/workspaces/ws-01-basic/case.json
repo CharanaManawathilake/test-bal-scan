@@ -1,0 +1,31 @@
+{
+  "title": "Scan a workspace (two packages, one depends on the other)",
+  "description": "Packages are scanned in dependency order; results for all packages are accumulated into the workspace target.",
+  "tags": [
+    "workspace",
+    "basics"
+  ],
+  "upstream": [
+    "ScanCmdTest#testScanCommandInWorkspace",
+    "SuppressionTest (testScanCommandInWorkspacePrintsOneDocument)"
+  ],
+  "steps": [
+    {
+      "name": "bal scan at the workspace root",
+      "run": "bal scan"
+    },
+    {
+      "name": "bal scan . ",
+      "run": "bal scan ."
+    },
+    {
+      "name": "Workspace path from the parent folder",
+      "run": "bal scan work",
+      "cwd": ".."
+    },
+    {
+      "name": "stdout redirected to a file",
+      "run": "bal scan 1> stdout-issues.json"
+    }
+  ]
+}

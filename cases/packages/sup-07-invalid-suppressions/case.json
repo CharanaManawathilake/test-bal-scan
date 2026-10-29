@@ -1,0 +1,26 @@
+{
+  "title": "Invalid suppressions (unknown, malformed, duplicate, empty, blank reason)",
+  "tags": [
+    "package",
+    "suppression"
+  ],
+  "upstream": [
+    "SuppressionTest#testInvalidSuppressionIsCountedOnce",
+    "test-resources/bal-project-with-invalid-suppressions"
+  ],
+  "steps": [
+    {
+      "name": "bal build (compiler plugin checks)",
+      "run": "bal build"
+    },
+    {
+      "name": "Scan",
+      "run": "bal scan"
+    },
+    {
+      "name": "--ignore-suppressions",
+      "run": "bal scan --ignore-suppressions"
+    }
+  ],
+  "notes": "The ballerina/scan compiler plugin rejects malformed rule IDs and empty rule lists as compile errors, so on the CLI this fixture stops at the compilation gate; upstream unit tests drive the analyzer directly."
+}

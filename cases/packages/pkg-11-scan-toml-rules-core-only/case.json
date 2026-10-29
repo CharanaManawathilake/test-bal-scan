@@ -1,0 +1,36 @@
+{
+  "title": "Scan.toml [rule] include/exclude (core rules only, no plugins needed)",
+  "tags": [
+    "package",
+    "scan-toml",
+    "rules"
+  ],
+  "steps": [
+    {
+      "name": "include = [1, 13]",
+      "run": "bal scan"
+    },
+    {
+      "name": "Scan.toml include + CLI exclude",
+      "run": "bal scan --exclude-rules=ballerina:14"
+    },
+    {
+      "name": "Switch to exclude variant",
+      "run": "node -e \"require('fs').copyFileSync('variants/exclude.toml','Scan.toml')\"",
+      "setup": true
+    },
+    {
+      "name": "exclude = [1]",
+      "run": "bal scan"
+    },
+    {
+      "name": "Switch to include+exclude variant",
+      "run": "node -e \"require('fs').copyFileSync('variants/both.toml','Scan.toml')\"",
+      "setup": true
+    },
+    {
+      "name": "include and exclude in Scan.toml",
+      "run": "bal scan"
+    }
+  ]
+}

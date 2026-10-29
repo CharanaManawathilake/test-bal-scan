@@ -1,0 +1,4 @@
+[package]
+org = "playground"
+name = "scan_toml_rules_core_only"
+version = "0.1.0"

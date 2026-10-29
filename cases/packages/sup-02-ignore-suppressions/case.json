@@ -1,0 +1,26 @@
+{
+  "title": "--ignore-suppressions reports everything",
+  "tags": [
+    "package",
+    "suppression"
+  ],
+  "upstream": [
+    "SuppressionTest#testIgnoreSuppressions",
+    "SuppressionTest#testSarifReportWithoutSuppressions",
+    "test-resources/bal-project-with-suppressions"
+  ],
+  "steps": [
+    {
+      "name": "--ignore-suppressions",
+      "run": "bal scan --ignore-suppressions"
+    },
+    {
+      "name": "--ignore-suppressions --format=sarif",
+      "run": "bal scan --ignore-suppressions --format=sarif"
+    },
+    {
+      "name": "--ignore-suppressions --scan-report",
+      "run": "bal scan --ignore-suppressions --scan-report"
+    }
+  ]
+}

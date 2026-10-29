@@ -1,0 +1,21 @@
+{
+  "title": "[suppression] enabled = false in Scan.toml",
+  "tags": [
+    "package",
+    "suppression"
+  ],
+  "upstream": [
+    "SuppressionTest#testSuppressionsDisabledInScanToml",
+    "test-resources/bal-project-with-disabled-suppressions"
+  ],
+  "steps": [
+    {
+      "name": "Scan",
+      "run": "bal scan"
+    },
+    {
+      "name": "SARIF",
+      "run": "bal scan --format=sarif"
+    }
+  ]
+}

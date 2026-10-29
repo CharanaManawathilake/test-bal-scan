@@ -1,0 +1,22 @@
+{
+  "title": "Rule values resolved by the compiler (constants, unresolved refs)",
+  "tags": [
+    "package",
+    "suppression"
+  ],
+  "upstream": [
+    "SuppressionTest#testRuleValuesAreResolvedByTheCompiler",
+    "test-resources/bal-project-with-unresolved-suppressions"
+  ],
+  "steps": [
+    {
+      "name": "Scan",
+      "run": "bal scan"
+    },
+    {
+      "name": "With both requirements",
+      "run": "bal scan --require-suppression-rule-id --require-suppression-reason"
+    }
+  ],
+  "notes": "Watch for the compile error on the escaped literal \"ballerina:1\" from the ballerina/scan compiler plugin: the PR says escapes in suppression literals are decoded."
+}

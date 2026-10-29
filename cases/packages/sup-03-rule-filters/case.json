@@ -1,0 +1,26 @@
+{
+  "title": "Suppressions combined with --include-rules / --exclude-rules",
+  "tags": [
+    "package",
+    "suppression"
+  ],
+  "upstream": [
+    "SuppressionTest#testSuppressionOfExcludedRuleIsNotUnmatched",
+    "SuppressionTest#testSuppressionOfRuleNotIncludedIsNotUnmatched",
+    "test-resources/bal-project-with-suppressions"
+  ],
+  "steps": [
+    {
+      "name": "--exclude-rules=ballerina:1",
+      "run": "bal scan --exclude-rules=ballerina:1"
+    },
+    {
+      "name": "--include-rules=ballerina:7",
+      "run": "bal scan --include-rules=ballerina:7"
+    },
+    {
+      "name": "--include-rules=ballerina:1",
+      "run": "bal scan --include-rules=ballerina:1"
+    }
+  ]
+}

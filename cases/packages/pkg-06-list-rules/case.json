@@ -1,0 +1,22 @@
+{
+  "title": "--list-rules in a package",
+  "tags": [
+    "package",
+    "rules"
+  ],
+  "upstream": [
+    "ScanCmdTest#testScanCommandWithListRulesFlag",
+    "ScanCmdTest#testPrintRulesToConsole"
+  ],
+  "steps": [
+    {
+      "name": "--list-rules",
+      "run": "bal scan --list-rules"
+    },
+    {
+      "name": "--list-rules by path",
+      "run": "bal scan work --list-rules",
+      "cwd": ".."
+    }
+  ]
+}

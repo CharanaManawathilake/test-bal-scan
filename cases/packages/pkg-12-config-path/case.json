@@ -1,0 +1,90 @@
+{
+  "title": "Ballerina.toml [scan] configPath: relative, external, missing, absent key, remote URL, invalid URL",
+  "description": "Each sub folder is its own package. Several upstream fixtures declare analyzers; those parts need the test plugins.",
+  "tags": [
+    "package",
+    "scan-toml",
+    "config-path",
+    "network"
+  ],
+  "upstream": [
+    "ProjectAnalyzerTest / ScanUtilsTest config loading",
+    "test-resources/bal-project-with-external-config-file",
+    "test-resources/bal-project-with-invalid-external-config-file",
+    "test-resources/bal-project-with-invalid-file-configuration",
+    "test-resources/bal-project-with-remote-config-file",
+    "test-resources/bal-project-with-invalid-remote-config-file"
+  ],
+  "requires": {
+    "plugins": true
+  },
+  "setup": [
+    {
+      "name": "Lock dependencies (core-only)",
+      "run": "bal build",
+      "cwd": "core-only"
+    },
+    {
+      "name": "Lock dependencies (external)",
+      "run": "bal build",
+      "cwd": "external/pkg"
+    },
+    {
+      "name": "Lock dependencies (missing-file)",
+      "run": "bal build",
+      "cwd": "missing-file"
+    },
+    {
+      "name": "Lock dependencies (no-config-path)",
+      "run": "bal build",
+      "cwd": "no-config-path"
+    },
+    {
+      "name": "Lock dependencies (remote)",
+      "run": "bal build",
+      "cwd": "remote"
+    },
+    {
+      "name": "Lock dependencies (invalid-remote)",
+      "run": "bal build",
+      "cwd": "invalid-remote"
+    }
+  ],
+  "steps": [
+    {
+      "name": "configPath to a file inside the package",
+      "run": "bal scan",
+      "cwd": "core-only"
+    },
+    {
+      "name": "configPath = ../Configurations.toml",
+      "run": "bal scan",
+      "cwd": "external/pkg"
+    },
+    {
+      "name": "configPath to a missing file",
+      "run": "bal scan",
+      "cwd": "missing-file"
+    },
+    {
+      "name": "[scan] table without configPath",
+      "run": "bal scan",
+      "cwd": "no-config-path"
+    },
+    {
+      "name": "Remote configPath (gist URL)",
+      "run": "bal scan",
+      "cwd": "remote"
+    },
+    {
+      "name": "Remote configPath --list-rules",
+      "run": "bal scan --list-rules",
+      "cwd": "remote"
+    },
+    {
+      "name": "Invalid remote configPath",
+      "run": "bal scan",
+      "cwd": "invalid-remote"
+    }
+  ]
+}

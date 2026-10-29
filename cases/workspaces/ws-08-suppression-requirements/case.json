@@ -1,0 +1,26 @@
+{
+  "title": "Workspace where one package fails suppression requirements",
+  "description": "Every package is checked first, so nothing is reported when one fails.",
+  "tags": [
+    "workspace",
+    "suppression"
+  ],
+  "upstream": [
+    "SuppressionTest#testRequirementsFailWorkspaceBeforeAnyReport",
+    "test-resources/workspace-with-suppression-requirements"
+  ],
+  "steps": [
+    {
+      "name": "Scan",
+      "run": "bal scan"
+    },
+    {
+      "name": "--scan-report",
+      "run": "bal scan --scan-report"
+    },
+    {
+      "name": "--ignore-suppressions",
+      "run": "bal scan --ignore-suppressions"
+    }
+  ]
+}

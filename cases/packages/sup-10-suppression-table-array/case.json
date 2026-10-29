@@ -1,0 +1,17 @@
+{
+  "title": "[[suppression]] written as a table array",
+  "tags": [
+    "package",
+    "suppression"
+  ],
+  "upstream": [
+    "test-resources/bal-project-with-suppression-table-array",
+    "test-resources/bal-project-with-suppression-table-array"
+  ],
+  "steps": [
+    {
+      "name": "Scan",
+      "run": "bal scan"
+    }
+  ]
+}

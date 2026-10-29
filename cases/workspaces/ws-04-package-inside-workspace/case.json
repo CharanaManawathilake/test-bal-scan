@@ -1,0 +1,30 @@
+{
+  "title": "Scanning one package or one file of a workspace",
+  "tags": [
+    "workspace",
+    "errors"
+  ],
+  "upstream": [
+    "ScanCmdTest#testScanCommandWorkspacePackageFileArgument"
+  ],
+  "steps": [
+    {
+      "name": "Package path from the workspace root",
+      "run": "bal scan hello_app"
+    },
+    {
+      "name": "bal scan inside a package",
+      "run": "bal scan",
+      "cwd": "hello_app"
+    },
+    {
+      "name": "File of a workspace package",
+      "run": "bal scan hello_app/main.bal"
+    },
+    {
+      "name": "File from inside the package",
+      "run": "bal scan main.bal",
+      "cwd": "hello_app"
+    }
+  ]
+}

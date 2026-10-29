@@ -1,0 +1,33 @@
+{
+  "title": "Upstream workspace-project (packages with Scan.toml analyzers and rule filters)",
+  "tags": [
+    "workspace",
+    "analyzer",
+    "scan-toml"
+  ],
+  "upstream": [
+    "ScanCmdTest#testScanCommandInWorkspace",
+    "test-resources/workspace-project"
+  ],
+  "requires": {
+    "plugins": true
+  },
+  "steps": [
+    {
+      "name": "Scan",
+      "run": "bal scan"
+    },
+    {
+      "name": "--list-rules",
+      "run": "bal scan --list-rules"
+    },
+    {
+      "name": "SARIF",
+      "run": "bal scan --format=sarif"
+    },
+    {
+      "name": "--scan-report",
+      "run": "bal scan --scan-report"
+    }
+  ]
+}

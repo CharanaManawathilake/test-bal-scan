@@ -1,0 +1,32 @@
+{
+  "title": "Basic @scan:Suppress: rule-specific, unmatched and blanket suppressions",
+  "tags": [
+    "package",
+    "suppression"
+  ],
+  "upstream": [
+    "SuppressionTest#testSuppressionsInJsonReport",
+    "SuppressionTest#testSuppressionsInSarifReport",
+    "SuppressionTest#testSuppressionsInHtmlReport",
+    "SuppressionTest#testConsoleOutputStreams",
+    "test-resources/bal-project-with-suppressions"
+  ],
+  "steps": [
+    {
+      "name": "Scan",
+      "run": "bal scan"
+    },
+    {
+      "name": "SARIF",
+      "run": "bal scan --format=sarif"
+    },
+    {
+      "name": "HTML report",
+      "run": "bal scan --scan-report"
+    },
+    {
+      "name": "stdout only",
+      "run": "bal scan 1> stdout-issues.json"
+    }
+  ]
+}
