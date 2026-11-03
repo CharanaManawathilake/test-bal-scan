@@ -29,6 +29,8 @@ node runner/run.mjs --versions=0.12.0,0.13.0-SNAPSHOT        # override SCAN_VER
 node runner/run.mjs --cases="packages/sup-*" --label=suppr     # only some cases, with a run name
 node runner/run.mjs --tags=core-rules                          # by tag
 node runner/run.mjs --skip-tags=sonarqube,network              # leave some out
+npm run test:parallel                                          # everything, 4 lanes; network/sonarqube cases one at a time
+npm run test:parallel:offline                                  # same, without the network/sonarqube cases
 npm run list                                                   # print the case catalog
 ```
 
@@ -39,6 +41,8 @@ npm run list                                                   # print the case 
 | `SCAN_VERSIONS` | Comma-separated scan tool versions. You can add `@central` (the default), `@local` (uses `--repository=local`), `@dev` (sets `BALLERINA_DEV_CENTRAL=true`) or `@stage`. For each version the runner tries `bal tool use scan:<v>`, then `bal tool pull scan:<v>`, and then checks `bal tool list`. If that version still isn't active, it is marked **unavailable**, its cases are skipped, and the log is saved in `tool-switch.txt`. |
 | `RESTORE_ACTIVE_VERSION` | Switches back to the scan version that was active before the run (default `true`). |
 | `CASES`, `TAGS`, `SKIP_TAGS` | Default case selection. The command-line flags override these. |
+| `JOBS` | How many cases run at the same time for each scan version (default `1`). `--jobs=N` overrides it. Scan versions still run one after another. |
+| `SERIAL_TAGS` | Cases carrying one of these tags never run at the same time as each other (default `network,sonarqube`, since they share the Central cache and the SonarQube server). With `JOBS` > 1 they get their own lane that starts first, while the other lanes run the remaining cases; when the serial lane is done it helps with the rest. `--serial-tags=` overrides it (empty makes every case parallel). |
 | `SONAR_HOST_URL`, `SONAR_TOKEN` | Used by the `sonarqube` cases. Each case gets a `sonar-project.properties` with these values, and they are also exported as environment variables. The token is masked as `***` in every saved output. |
 | `SONAR_PLATFORM_PLUGIN_PATH` | The platform plugin JAR, or a URL to it, that goes into the `[[platform]]` entry of the case's `Scan.toml`. |
 | `SONAR_SCANNER_HOME` | Its `bin` folder is added to the front of `PATH`, because the plugin calls `sonar-scanner`. |
@@ -95,7 +99,7 @@ results/<run-id>/        run.json, terminal.txt, <version>/<category>/<case>/{ca
 Upstream builds its test plugins with Gradle and GitHub Packages. `tools/build-test-plugins.mjs` builds the same plugins with only `javac`, `jar` and `bal`:
 
 - **Analyzers:** `exampleOrg|ballerina|ballerinax/example_module_static_code_analyzer`, plus `invalid/invalid_module_{ruleformat,rulekind,rules}_static_code_analyzer`, which have deliberately broken `rules.json` files. Each analyzer reports rule 1 once per document, like upstream. The script packs them, pushes them to the **local** repository, and then copies them into `~/.ballerina/repositories/central.ballerina.io/bala/...`, as upstream's `build.gradle` does, so `[[analyzer]]` entries without `repository = "local"` can find them.
-- **Platform plugin:** `tools/test-plugins/out/recorder-platform-plugin.jar` provides the `recorder` and `recorder2` platforms. Each writes `platform-<name>-output.json` into the working directory, containing the issues, the platform arguments and `initiatedByPlatform`, and prints a one-line summary.
+- **Platform plugin:** `tools/test-plugins/out/recorder-platform-plugin.jar` provides the `recorder` and `recorder2` platforms. Each writes `platform-<name>-output.json` into the working directory, containing the issues, the platform arguments and `initiatedByPlatform`, and prints a one-line summary. The platform argument `fail = "init"` or `fail = "onScan"` makes it throw at that point, like a failed upload.
 
 The script compiles against the active scan tool's `scan-command` JAR. Ballerina 2201.14 is built for Java 25, so it falls back to an older installed distribution's `bre/lib` when the local `javac` is older than that. `npm run clean:plugins` removes everything the script installed. Cases that need the plugins are skipped until you build them, and the skip reason says so.
 
@@ -111,7 +115,7 @@ The script compiles against the active scan tool's `scan-command` JAR. Ballerina
 
 ## Coverage notes
 
-- The single-file cases cover file arguments, the invalid-argument paths, ignored report flags, formats, `--list-rules`, rule filters, help, compilation errors, `Scan.toml` next to a file, `--platforms`, suppressions, and a `core-rules` case: one compiling file (`core_rules.bal`) that triggers every core rule from `ballerina:1` to `ballerina:14`.
-- The package cases cover basic scans by path, an empty package, a file inside a package, `--target-dir`, `--scan-report`, formats, `--list-rules`, rule filters on the CLI and in `Scan.toml`, `configPath` (relative, external, missing, remote and invalid URL), custom and invalid analyzers, invalid `Scan.toml` entries, standard library analyzers (http, file, os, crypto), compilation errors, a missing `Dependencies.toml`, the recorder platform, invalid platforms, SonarQube, and 18 suppression cases (`sup-*`).
-- The workspace cases cover basic scans, SARIF and reports, rules, scanning one package or one file, empty and broken packages, the upstream `workspace-project`, platforms per package, suppression requirements, suppressions, `Scan.toml` per package and at the workspace root, SonarQube, and a missing `Dependencies.toml`.
+- The single-file cases cover file arguments, the invalid-argument paths, ignored report flags and `--exclude-tests`, formats, `--list-rules`, rule filters, help, compilation errors, `Scan.toml` next to a file, `--platforms`, suppressions, and a `core-rules` case: one compiling file (`core_rules.bal`) that triggers every core rule from `ballerina:1` to `ballerina:14`.
+- The package cases cover basic scans by path, an empty package, a file inside a package, `--target-dir`, `--scan-report`, formats, `--list-rules`, rule filters on the CLI and in `Scan.toml`, `configPath` (relative, external, missing, remote and invalid URL), custom and invalid analyzers, invalid `Scan.toml` entries, standard library analyzers (http, file, os, crypto), compilation errors, a missing `Dependencies.toml`, the recorder platform, invalid platforms, SonarQube, the gate (`--fail-on-severity`, `--fail-on-count`, `[gate]`), leaving tests out (`--exclude-tests`, `[analysis]`), platform paths resolved next to `Scan.toml` and failed uploads as warnings, and 18 suppression cases (`sup-*`).
+- The workspace cases cover basic scans, SARIF and reports, rules, scanning one package or one file, empty and broken packages, the upstream `workspace-project`, platforms per package, suppression requirements, suppressions, `Scan.toml` per package and at the workspace root, SonarQube with one Sonar project per package, a missing `Dependencies.toml`, the workspace `Scan.toml` as the default of each package (`ws-13`) and its errors (`ws-14`), the gate checked per package (`ws-15`), and a failed platform in one package (`ws-16`).
 - Not covered: `ScanLanguageServerTool`, the editor/language-server entry point that applies global exclusions. It has no CLI to drive.

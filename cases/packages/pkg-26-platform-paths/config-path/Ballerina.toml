@@ -1,0 +1,7 @@
+[package]
+org = "playground"
+name = "platform_paths_config_path"
+version = "0.1.0"
+
+[scan]
+configPath = "config/Scan.toml"

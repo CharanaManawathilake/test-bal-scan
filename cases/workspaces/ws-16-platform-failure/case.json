@@ -1,0 +1,31 @@
+{
+  "title": "Workspace where one package's platform fails",
+  "description": "failing_pkg reports to a recorder that throws; working_pkg reports to recorder2. Both run at the same time after every package's results are saved. working_pkg still writes platform-recorder2-output.json, but the failure of the other fails the scan (exit 1) with the package named, and the gate is not checked. Needs plugins built after the recorder gained its fail argument (npm run setup:plugins).",
+  "tags": [
+    "workspace",
+    "platform"
+  ],
+  "upstream": [
+    "ScanCmdTest#testPlatformFailureFailsTheScan"
+  ],
+  "requires": {
+    "plugins": true
+  },
+  "steps": [
+    {
+      "name": "Scan without platforms",
+      "run": "bal scan",
+      "note": "No platform runs: exit 0."
+    },
+    {
+      "name": "Scan with both platforms",
+      "run": "bal scan --platforms=recorder,recorder2",
+      "note": "Two PLATFORM_NOT_DECLARED warnings, then '1 platform failed to report the issues' with 'failing_pkg: error: platform 'recorder' failed: ...'."
+    },
+    {
+      "name": "Failed platform with a tripped gate",
+      "run": "bal scan --platforms=recorder,recorder2 --fail-on-severity=LOW",
+      "note": "The platform error wins over the gate."
+    }
+  ]
+}

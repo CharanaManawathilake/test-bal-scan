@@ -1,0 +1,14 @@
+# Writes one field of every table, so each command-line option has a field to override
+[rule]
+exclude = ["ballerina:13"]
+
+[suppression]
+enabled = true
+requireReason = false
+
+[gate]
+failOnSeverity = "MEDIUM"
+failOnCount = 2
+
+[analysis]
+excludeTests = false

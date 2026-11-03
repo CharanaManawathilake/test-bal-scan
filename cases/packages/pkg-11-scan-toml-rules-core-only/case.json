@@ -12,7 +12,8 @@
     },
     {
       "name": "Scan.toml include + CLI exclude",
-      "run": "bal scan --exclude-rules=ballerina:14"
+      "run": "bal scan --exclude-rules=ballerina:14",
+      "note": "From 0.13.0 only ballerina:14 is excluded and every other rule runs, with a warning that --exclude-rules=ballerina:14 overrides [rule] include = [\"ballerina:1\", \"ballerina:13\"]. Before, this is the include-and-exclude error."
     },
     {
       "name": "Switch to exclude variant",
@@ -24,13 +25,20 @@
       "run": "bal scan"
     },
     {
+      "name": "Scan.toml exclude + CLI exclude",
+      "run": "bal scan --exclude-rules=ballerina:13",
+      "note": "From 0.13.0 only ballerina:13 is excluded, so the ballerina:1 issues come back, with the override warning. Before, both are excluded."
+    },
+    {
       "name": "Switch to include+exclude variant",
       "run": "node -e \"require('fs').copyFileSync('variants/both.toml','Scan.toml')\"",
       "setup": true
     },
     {
       "name": "include and exclude in Scan.toml",
-      "run": "bal scan"
+      "run": "bal scan",
+      "note": "From 0.13.0: Scan.toml has 1 error, Scan.toml:1:1: error: cannot include and exclude rules at the same time."
     }
-  ]
+  ],
+  "description": "From 0.13.0 a CLI rule option replaces the whole [rule] table of Scan.toml (with a warning), and a [rule] table that sets both include and exclude is a Scan.toml error at its location. Earlier versions add the CLI rules to the Scan.toml ones and fail when the result both includes and excludes rules."
 }

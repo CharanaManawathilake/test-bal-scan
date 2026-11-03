@@ -33,10 +33,36 @@ public class RecorderPlatformPlugin implements StaticCodeAnalysisPlatformPlugin 
         this.platformArgs = new TreeMap<>(context.platformArgs());
         this.initiatedByPlatform = context.initiatedByPlatform();
         this.initialized = true;
+        failIfAsked("init");
+    }
+
+    // The platform argument fail = "init" or "onScan" makes the plugin throw there, like a failed upload
+    private void failIfAsked(String stage) {
+        if (stage.equals(platformArgs.get("fail"))) {
+            throw new IllegalStateException(platform() + " was asked to fail in " + stage);
+        }
+    }
+
+    // The platform argument delayMillis makes onScan take that long, so that platforms running together overlap
+    private void delayIfAsked() {
+        String delay = platformArgs.get("delayMillis");
+        if (delay == null) {
+            return;
+        }
+        System.err.println("[" + platform() + " platform plugin] started on " + Thread.currentThread().getName()
+                + " at " + java.time.LocalTime.now());
+        try {
+            Thread.sleep(Long.parseLong(delay));
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+        System.err.println("[" + platform() + " platform plugin] finished at " + java.time.LocalTime.now());
     }
 
     @Override
     public void onScan(List<Issue> issues) {
+        delayIfAsked();
+        failIfAsked("onScan");
         StringBuilder json = new StringBuilder("{\n");
         json.append("  \"platform\": ").append(quote(platform())).append(",\n");
         json.append("  \"initialized\": ").append(initialized).append(",\n");

@@ -1,0 +1,3 @@
+# Found through [scan] configPath in the workspace Ballerina.toml, as for a package
+[gate]
+failOnSeverity = "HIGH"

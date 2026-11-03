@@ -1,0 +1,4 @@
+[package]
+org = "playground"
+name = "app_config_path"
+version = "0.1.0"

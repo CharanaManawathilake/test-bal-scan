@@ -1,0 +1,44 @@
+{
+  "title": "Gate in a workspace: each package is checked with its own issues",
+  "description": "pkg_a has 1 HIGH issue and [gate] failOnSeverity = \"HIGH\"; pkg_b has 2 LOW issues and [gate] failOnCount = 5. From 0.13.0 a command-line gate option replaces each package's whole [gate], so a setting left off the command line is not read from the package. Issues are never added up across packages. Not available before 0.13.0.",
+  "tags": [
+    "workspace",
+    "gate"
+  ],
+  "upstream": [
+    "GateTest#testPackageGatesInWorkspace",
+    "GateTest#testCommandLineGateInWorkspace",
+    "test-resources/workspace-with-gates"
+  ],
+  "steps": [
+    {
+      "name": "Package gates",
+      "run": "bal scan",
+      "note": "1 package failed the gate: pkg_a."
+    },
+    {
+      "name": "--fail-on-count=3",
+      "run": "bal scan --fail-on-count=3",
+      "note": "Passes: no package has 3 issues on its own (3 in total). Warns once per package: --fail-on-count=3 overrides [gate] failOnSeverity = \"HIGH\" in pkg_a/Scan.toml, and [gate] failOnCount = 5 in pkg_b/Scan.toml."
+    },
+    {
+      "name": "--fail-on-severity=LOW",
+      "run": "bal scan --fail-on-severity=LOW",
+      "note": "pkg_b does not keep failOnCount = 5, so both packages fail on their first issue: 2 packages failed the gate. Before the whole-table change, only pkg_a failed."
+    },
+    {
+      "name": "--fail-on-severity=LOW --fail-on-count=1",
+      "run": "bal scan --fail-on-severity=LOW --fail-on-count=1",
+      "note": "2 packages failed the gate."
+    },
+    {
+      "name": "--fail-on-severity=NONE",
+      "run": "bal scan --fail-on-severity=NONE"
+    },
+    {
+      "name": "--platform-triggered",
+      "run": "bal scan --platform-triggered --fail-on-severity=LOW",
+      "note": "The gate is off when a platform triggers the scan."
+    }
+  ]
+}

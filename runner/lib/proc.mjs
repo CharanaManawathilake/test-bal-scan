@@ -1,4 +1,6 @@
 import { spawn } from 'node:child_process';
+import fs from 'node:fs';
+import path from 'node:path';
 
 const ANSI = /\u001b\[[0-9;?]*[A-Za-z]/g;
 
@@ -14,17 +16,45 @@ export function mask(text, secrets) {
   return out;
 }
 
+function isBatchCommand(command, cwd, env) {
+  const program = command.trim().match(/^"([^"]+)"|^(\S+)/);
+  if (!program) {
+    return false;
+  }
+  const name = program[1] || program[2];
+  if (/\.(bat|cmd)$/i.test(name)) {
+    return true;
+  }
+  if (path.extname(name)) {
+    return false;
+  }
+  const exts = (env?.PATHEXT || process.env.PATHEXT || '.COM;.EXE;.BAT;.CMD').split(';').filter(Boolean);
+  const dirs = /[\\/]/.test(name)
+    ? ['']
+    : [cwd || process.cwd(), ...(env?.PATH || env?.Path || process.env.PATH || '').split(path.delimiter)];
+  for (const dir of dirs) {
+    for (const ext of exts) {
+      if (fs.existsSync(path.resolve(cwd || '.', dir, name + ext))) {
+        return /^\.(bat|cmd)$/i.test(ext);
+      }
+    }
+  }
+  return false;
+}
+
 /**
  * Runs a shell command and keeps stdout, stderr and their interleaving in arrival order.
  */
-export function runCommand(command, { cwd, env, timeoutMs = 600000, secrets = [], echo = false } = {}) {
+export function runCommand(command, { cwd, env, timeoutMs = 600000, secrets = [], echo = false, onData } = {}) {
   return new Promise((resolve) => {
     const started = Date.now();
     const chunks = [];
     let stdout = '';
     let stderr = '';
     let timedOut = false;
-    const child = spawn(command, { cwd, env, shell: true, windowsHide: true });
+    // cmd /c reports exit code 0 for a .bat that ends in a bare `exit /b` (e.g. bal.bat); `call` keeps the real code.
+    const shellCommand = process.platform === 'win32' && isBatchCommand(command, cwd, env) ? `call ${command}` : command;
+    const child = spawn(shellCommand, { cwd, env, shell: true, windowsHide: true });
     const timer = setTimeout(() => {
       timedOut = true;
       child.kill();
@@ -41,6 +71,7 @@ export function runCommand(command, { cwd, env, timeoutMs = 600000, secrets = []
       if (echo) {
         process.stdout.write(text);
       }
+      onData?.(text, stream);
     };
     child.stdout.on('data', collect('stdout'));
     child.stderr.on('data', collect('stderr'));

@@ -1,0 +1,4 @@
+[package]
+org = "playground"
+name = "platform_one_fails"
+version = "0.1.0"

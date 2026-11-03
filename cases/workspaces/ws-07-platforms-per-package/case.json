@@ -1,6 +1,6 @@
 {
   "title": "Workspace where each package reports to its own platform",
-  "description": "first-package declares \"recorder\", second-package \"recorder2\"; each writes platform-<name>-output.json.",
+  "description": "first-package declares \"recorder\", second-package \"recorder2\"; each writes platform-<name>-output.json. A platform runs only when --platforms names it. A package that does not declare a named platform is warned about and not reported to it; a name no package declares fails the scan before it starts.",
   "tags": [
     "workspace",
     "platform"
@@ -15,15 +15,27 @@
   "steps": [
     {
       "name": "Scan",
-      "run": "bal scan"
+      "run": "bal scan",
+      "note": "No platform runs."
     },
     {
       "name": "--platforms=recorder",
-      "run": "bal scan --platforms=recorder"
+      "run": "bal scan --platforms=recorder",
+      "note": "Warns that second-package does not declare 'recorder'; first-package reports to it."
+    },
+    {
+      "name": "--platforms=recorder,recorder2",
+      "run": "bal scan --platforms=recorder,recorder2",
+      "note": "Two warnings (each package lacks the other platform); both platforms run at the same time."
+    },
+    {
+      "name": "--platforms=unknown",
+      "run": "bal scan --platforms=unknown",
+      "note": "No package declares it: fails before scanning."
     },
     {
       "name": "--scan-report",
-      "run": "bal scan --scan-report"
+      "run": "bal scan --scan-report --platforms=recorder,recorder2"
     }
   ]
 }

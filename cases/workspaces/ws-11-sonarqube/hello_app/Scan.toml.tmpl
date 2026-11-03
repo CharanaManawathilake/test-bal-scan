@@ -1,4 +1,5 @@
 [[platform]]
 name = "sonarqube"
 path = "${SONAR_PLATFORM_PLUGIN_PATH}"
-sonarProjectPropertiesPath = "${WORK_DIR}/sonar-project.properties"
+# Resolved next to this Scan.toml; each package reports to a Sonar project of its own
+sonarProjectPropertiesPath = "sonar-project.properties"

@@ -1,0 +1,72 @@
+{
+  "title": "Platform paths resolved next to Scan.toml, and failed platforms",
+  "description": "A relative plugin path and any argument ending in \"Path\" resolve in the folder of the Scan.toml that sets them, reach the plugin as absolute paths, and stop the scan when the file is missing. The platforms named in --platforms run at the same time after the results are saved; if any of them fails, the scan fails with one error that lists every failed platform, and the gate is not checked. The failing part needs plugins built after the recorder gained its fail argument (npm run setup:plugins).",
+  "tags": [
+    "package",
+    "platform",
+    "scan-toml",
+    "config-path"
+  ],
+  "upstream": [
+    "ScanCmdTest#testPlatformPathsRelativeToScanToml",
+    "ScanCmdTest#testPlatformFailureFailsTheScan"
+  ],
+  "requires": {
+    "plugins": true
+  },
+  "setup": [
+    {
+      "name": "Lock dependencies (config-path)",
+      "run": "bal build",
+      "cwd": "config-path"
+    },
+    {
+      "name": "Lock dependencies (missing-arg)",
+      "run": "bal build",
+      "cwd": "missing-arg"
+    },
+    {
+      "name": "Lock dependencies (failing)",
+      "run": "bal build",
+      "cwd": "failing"
+    }
+  ],
+  "steps": [
+    {
+      "name": "Scan.toml in config/ via configPath",
+      "run": "bal scan --platforms=recorder",
+      "cwd": "config-path",
+      "note": "platform-recorder-output.json shows sonarProjectPropertiesPath as <work>/config-path/config/sonar-project.properties."
+    },
+    {
+      "name": "Path argument that does not exist",
+      "run": "bal scan",
+      "cwd": "missing-arg",
+      "note": "Error: 'sonarProjectPropertiesPath' of platform 'recorder' is not a file or a URL."
+    },
+    {
+      "name": "Platforms not selected",
+      "run": "bal scan",
+      "cwd": "failing",
+      "note": "Neither platform runs, so nothing fails: exit 0."
+    },
+    {
+      "name": "Platforms that fail in onScan and init",
+      "run": "bal scan --platforms=recorder,recorder2",
+      "cwd": "failing",
+      "note": "The report is written and the summary printed, then both platforms run together; one error lists both failures, exit 1."
+    },
+    {
+      "name": "Failed platforms with a tripped gate",
+      "run": "bal scan --platforms=recorder,recorder2 --fail-on-severity=LOW",
+      "cwd": "failing",
+      "note": "The platform error wins: the gate is not checked, exit 1."
+    },
+    {
+      "name": "Only the gate fails",
+      "run": "bal scan --fail-on-severity=LOW",
+      "cwd": "failing",
+      "note": "No platform selected, so the gate is what fails."
+    }
+  ]
+}

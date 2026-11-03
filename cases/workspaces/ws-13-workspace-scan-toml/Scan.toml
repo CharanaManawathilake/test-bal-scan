@@ -1,0 +1,9 @@
+# The defaults of every package; a package's own table replaces the one here as a whole
+[rule]
+exclude = ["ballerina:13", "exampleOrg/example_module_static_code_analyzer:1"]
+
+[gate]
+failOnSeverity = "LOW"
+
+[analysis]
+excludeTests = true

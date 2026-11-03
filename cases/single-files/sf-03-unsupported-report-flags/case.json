@@ -1,5 +1,5 @@
 {
-  "title": "--target-dir and --scan-report are ignored for single files (warnings)",
+  "title": "--target-dir, --scan-report and --exclude-tests are ignored for single files (warnings)",
   "tags": [
     "single-file",
     "report"
@@ -21,6 +21,16 @@
     {
       "name": "Both",
       "run": "bal scan main.bal --target-dir=results --scan-report"
+    },
+    {
+      "name": "--exclude-tests",
+      "run": "bal scan main.bal --exclude-tests",
+      "note": "A single file has no tests; 0.13.0+ warns and scans the file."
+    },
+    {
+      "name": "--exclude-tests=false",
+      "run": "bal scan main.bal --exclude-tests=false",
+      "note": "Nothing is left out, so no warning is printed."
     }
   ]
 }

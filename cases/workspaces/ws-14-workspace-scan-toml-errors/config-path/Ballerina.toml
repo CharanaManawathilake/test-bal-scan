@@ -1,0 +1,5 @@
+[workspace]
+packages = ["app"]
+
+[scan]
+configPath = "config/Scan.toml"

@@ -1,0 +1,11 @@
+# recorder fails after its delay; recorder2 succeeds
+[[platform]]
+name = "recorder"
+path = "${RECORDER_PLUGIN_JAR}"
+delayMillis = "2000"
+fail = "onScan"
+
+[[platform]]
+name = "recorder2"
+path = "${RECORDER_PLUGIN_JAR}"
+delayMillis = "2000"

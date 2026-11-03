@@ -39,16 +39,35 @@ function readJson(file) {
   }
 }
 
+function isAlive(pid) {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (err) {
+    return err.code === 'EPERM';
+  }
+}
+
+// A runner that was killed leaves run.json at status "running" forever; report it as interrupted instead.
+function withLiveness(run) {
+  if (run?.status === 'running' && run.pid && !isAlive(run.pid)) {
+    run.status = 'interrupted';
+  }
+  return run;
+}
+
 function listRuns() {
   if (!fs.existsSync(RESULTS_DIR)) {
     return [];
   }
   return fs.readdirSync(RESULTS_DIR, { withFileTypes: true })
     .filter((d) => d.isDirectory())
-    .map((d) => readJson(path.join(RESULTS_DIR, d.name, 'run.json')))
+    .map((d) => withLiveness(readJson(path.join(RESULTS_DIR, d.name, 'run.json'))))
     .filter(Boolean)
     .sort((a, b) => b.id.localeCompare(a.id));
 }
+
+const stripAnsi = (s) => s.replace(/\u001b\[[0-9;?]*[A-Za-z]/g, '');
 
 function directoryPage(rel, entries) {
   const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -161,11 +180,15 @@ const server = http.createServer(async (req, res) => {
           s[name] = fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : '';
         }
       }
+      if (record.currentStep?.liveOutput) {
+        const live = path.join(ROOT, record.currentStep.liveOutput);
+        record.currentStep.combined = within(RESULTS_DIR, live) && fs.existsSync(live) ? stripAnsi(fs.readFileSync(live, 'utf8')) : '';
+      }
       return send(res, 200, record);
     }
     const runMatch = p.match(/^\/api\/runs\/([^/]+)$/);
     if (runMatch) {
-      const run = readJson(path.join(RESULTS_DIR, runMatch[1], 'run.json'));
+      const run = withLiveness(readJson(path.join(RESULTS_DIR, runMatch[1], 'run.json')));
       return run ? send(res, 200, run) : send(res, 404, { error: 'no such run' });
     }
     if (p === '/api/job' && req.method === 'GET') {

@@ -1,0 +1,3 @@
+# An empty rule selection clears the workspace exclusions
+[rule]
+include = []

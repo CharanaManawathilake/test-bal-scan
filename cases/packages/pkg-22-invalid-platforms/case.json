@@ -1,6 +1,6 @@
 {
   "title": "Invalid platform configurations",
-  "description": "Unknown --platforms without Scan.toml, unreachable/invalid plugin URLs, a platform without path, a missing local JAR.",
+  "description": "Unknown --platforms without Scan.toml, unreachable/invalid plugin URLs, a platform without path, a missing local JAR. A plugin URL is downloaded only when --platforms names the platform, so an unreachable URL is harmless without it. A path that is neither a file nor a URL fails when Scan.toml is read, whatever the command line.",
   "tags": [
     "package",
     "platform",
@@ -49,9 +49,16 @@
       "cwd": "no-scan-toml"
     },
     {
-      "name": "Unreachable plugin URL (example.com)",
+      "name": "Unreachable plugin URL, not selected",
       "run": "bal scan",
-      "cwd": "unreachable-jar"
+      "cwd": "unreachable-jar",
+      "note": "The URL is not downloaded, since --platforms does not name the platform, so the scan succeeds."
+    },
+    {
+      "name": "Unreachable plugin URL, selected",
+      "run": "bal scan --platforms=examplePlatform",
+      "cwd": "unreachable-jar",
+      "note": "The URL is downloaded only now, because --platforms names the platform, and the download fails before anything is scanned."
     },
     {
       "name": "Plugin path without scheme",

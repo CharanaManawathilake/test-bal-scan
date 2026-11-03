@@ -1,0 +1,78 @@
+{
+  "title": "Command-line options override single fields of Scan.toml",
+  "description": "all-fields has 1 HIGH (ballerina:13), 2 MEDIUM and 3 LOW issues, and a Scan.toml that writes [rule] exclude, [suppression] enabled and requireReason, [gate] failOnSeverity and failOnCount, and [analysis] excludeTests. Each option replaces only its own field and warns only when the file writes that field with a different value. A rule option that leaves both include and exclude set is a usage error.",
+  "tags": [
+    "package",
+    "scan-toml",
+    "gate",
+    "rules",
+    "suppression"
+  ],
+  "upstream": [
+    "GateTest#testGateOptionsReplaceOneField",
+    "ScanCmdTest#testRuleOptionConflictsWithScanToml"
+  ],
+  "setup": [
+    {
+      "name": "Lock dependencies (all-fields)",
+      "run": "bal build",
+      "cwd": "all-fields"
+    }
+  ],
+  "steps": [
+    {
+      "name": "Scan.toml alone",
+      "run": "bal scan",
+      "cwd": "all-fields",
+      "note": "ballerina:13 is excluded; 2 issues at or above MEDIUM reach failOnCount = 2: exit 1."
+    },
+    {
+      "name": "--fail-on-count=5",
+      "run": "bal scan --fail-on-count=5",
+      "cwd": "all-fields",
+      "note": "One warning for failOnCount; failOnSeverity = \"MEDIUM\" is kept, 2 < 5, passes."
+    },
+    {
+      "name": "--fail-on-count=2 (same value)",
+      "run": "bal scan --fail-on-count=2",
+      "cwd": "all-fields",
+      "note": "No warning; fails as with Scan.toml alone."
+    },
+    {
+      "name": "--fail-on-severity=HIGH --fail-on-count=1",
+      "run": "bal scan --fail-on-severity=HIGH --fail-on-count=1",
+      "cwd": "all-fields",
+      "note": "Two warnings, one per field. The HIGH issue is excluded by Scan.toml, so it passes."
+    },
+    {
+      "name": "--exclude-rules=ballerina:1",
+      "run": "bal scan --exclude-rules=ballerina:1",
+      "cwd": "all-fields",
+      "note": "Replaces [rule] exclude, with a warning; ballerina:13 is back, 3 issues at or above MEDIUM, fails."
+    },
+    {
+      "name": "--include-rules=ballerina:1 (conflict)",
+      "run": "bal scan --include-rules=ballerina:1",
+      "cwd": "all-fields",
+      "note": "include from the command line and exclude from Scan.toml are both set: usage error, exit 2, before scanning."
+    },
+    {
+      "name": "Suppression flags",
+      "run": "bal scan --ignore-suppressions --require-suppression-reason --require-suppression-rule-id --fail-on-severity=NONE",
+      "cwd": "all-fields",
+      "note": "Warnings for enabled and requireReason; none for requireRuleId, which the file does not write."
+    },
+    {
+      "name": "--exclude-tests",
+      "run": "bal scan --exclude-tests --fail-on-severity=NONE",
+      "cwd": "all-fields",
+      "note": "Warns: --exclude-tests=true overrides [analysis] excludeTests = false."
+    },
+    {
+      "name": "--exclude-tests=false (same value)",
+      "run": "bal scan --exclude-tests=false --fail-on-severity=NONE",
+      "cwd": "all-fields",
+      "note": "No warning for excludeTests."
+    }
+  ]
+}

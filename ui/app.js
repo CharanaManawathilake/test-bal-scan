@@ -60,11 +60,24 @@ function upstreamLink(ref) {
 // Sidebar
 // ---------------------------------------------------------------------------------------------------------------
 function runVersions() {
-  return (state.run?.versions || []).filter((v) => v.dir);
+  return (state.run?.versions || []).filter((v) => v.dir || (isLive() && v.status === 'pending'));
 }
 
 function summaryFor(version, caseId) {
   return version.cases?.find((c) => c.id === caseId);
+}
+
+function isLive(run = state.run) {
+  return run?.status === 'running';
+}
+
+// One of: done, running, pending, none.
+function caseState(version, caseId) {
+  if (summaryFor(version, caseId)) return 'done';
+  if (!isLive()) return 'none';
+  if (version.running?.includes(caseId)) return 'running';
+  const inRun = state.run.caseIds ? state.run.caseIds.includes(caseId) : true;
+  return inRun && ['pending', 'running'].includes(version.status) ? 'pending' : 'none';
 }
 
 function differs(caseId) {
@@ -75,7 +88,13 @@ function differs(caseId) {
   return new Set(keys).size > 1;
 }
 
-function cellHtml(summary, isDiff) {
+function cellHtml(summary, isDiff, live) {
+  if (live === 'running') {
+    return '<div class="cell running" title="running now"><div class="dots"><span class="dot live"></span></div><span>running</span></div>';
+  }
+  if (live === 'pending') {
+    return '<div class="cell pending" title="waiting to run"><div class="dots"><span class="dot none"></span></div><span>pending</span></div>';
+  }
   if (!summary) {
     return '<div class="cell"><div class="dots"><span class="dot none" title="not run"></span></div></div>';
   }
@@ -110,7 +129,7 @@ function renderSidebar() {
     const isDiff = differs(c.id);
     html += `<li class="case-row ${c.id === state.caseId ? 'active' : ''}" data-id="${esc(c.id)}">
       <div class="names"><div class="name">${esc(c.name)}</div><div class="title">${esc(c.title)}</div></div>
-      <div class="cells">${versions.map((v) => cellHtml(summaryFor(v, c.id), isDiff)).join('')}</div></li>`;
+      <div class="cells">${versions.map((v) => cellHtml(summaryFor(v, c.id), isDiff, caseState(v, c.id))).join('')}</div></li>`;
   }
   $('#caseList').innerHTML = html || '<li class="muted">No cases match.</li>';
 }
@@ -118,6 +137,23 @@ function renderSidebar() {
 // ---------------------------------------------------------------------------------------------------------------
 // Overview
 // ---------------------------------------------------------------------------------------------------------------
+function progressHtml(run) {
+  if (!isLive(run)) return '';
+  const total = run.caseIds?.length ?? run.caseCount;
+  const title = (id) => esc(state.cases.find((c) => c.id === id)?.title || '');
+  const rows = run.versions.map((v) => {
+    const done = v.cases?.length || 0;
+    const running = v.running || [];
+    const pct = total ? Math.round((done / total) * 100) : 0;
+    const now = running.map((id) => `<li data-id="${esc(id)}"><span class="dot live"></span> <span class="mono">${esc(id)}</span> <span class="muted">${title(id)}</span></li>`).join('');
+    return `<div class="progress-row">
+      <div class="progress-head"><b>${esc(v.spec)}</b> <span class="muted">${esc(v.status)} · ${done}/${total} done${running.length ? ` · ${running.length} running` : ''}${v.status === 'running' ? ` · ${total - done - running.length} pending` : ''}</span></div>
+      <div class="bar"><div style="width:${pct}%"></div></div>
+      ${now ? `<ul class="live-list">${now}</ul>` : ''}</div>`;
+  }).join('');
+  return `<div class="progress"><div class="progress-title"><span class="dot live"></span> Run in progress, this page updates automatically</div>${rows}</div>`;
+}
+
 function renderOverview() {
   const run = state.run;
   if (!run) {
@@ -134,6 +170,9 @@ function renderOverview() {
   const rows = filteredCases().map((c) => {
     const cells = versions.map((v) => {
       const s = summaryFor(v, c.id);
+      const live = caseState(v, c.id);
+      if (live === 'running') return '<td class="live-cell"><span class="dot live"></span> running</td>';
+      if (live === 'pending') return '<td class="muted">pending</td>';
       if (!s) return '<td class="muted">-</td>';
       if (s.status !== 'ran') return `<td class="muted" title="${esc(s.skipReason)}">${esc(s.status)}</td>`;
       const errs = (s.errorFlags || []).filter(Boolean).length;
@@ -141,10 +180,12 @@ function renderOverview() {
     }).join('');
     return `<tr data-id="${esc(c.id)}"><td class="mono">${esc(c.id)}${differs(c.id) ? ' <span class="chip diff">differs</span>' : ''}</td>${cells}</tr>`;
   }).join('');
+  const scroll = $('#detail').scrollTop;
   $('#detail').innerHTML = `
     <h1>Run ${esc(run.id)}</h1>
     <div class="muted">${esc(run.balVersion.split('\n')[0] || '')} · started ${esc(new Date(run.startedAt).toLocaleString())}
       · status ${esc(run.status)} · scan tool active before the run: ${esc(run.originalActiveScanVersion || '?')}</div>
+    ${progressHtml(run)}
     <div class="stat-row">
       <div class="stat"><div class="v">${versions.length}</div><div class="l">versions (${esc(versions.map((v) => `${v.spec}: ${v.status}`).join(', '))})</div></div>
       <div class="stat"><div class="v">${ran.length}</div><div class="l">case runs recorded</div></div>
@@ -154,6 +195,10 @@ function renderOverview() {
     </div>
     <p class="muted">Exit codes and printed issue counts per scan step (setup steps excluded). On Windows <code>bal.bat</code> exits 0 even when a command fails, so steps that printed errors are flagged separately. Nothing here is asserted; select a case to see what happened.</p>
     <table class="overview"><thead><tr><th>case</th>${versions.map((v) => `<th>${esc(v.spec)}</th>`).join('')}</tr></thead><tbody>${rows}</tbody></table>`;
+  $('#detail').scrollTop = scroll;
+  if (run.status === 'interrupted') {
+    $('#detail').insertAdjacentHTML('afterbegin', '<p class="chip exitnz">The runner process for this run is gone (killed or crashed); results stop where it left off.</p>');
+  }
   for (const v of (run.versions || []).filter((x) => x.toolChangedDuringRun)) {
     $('#detail').insertAdjacentHTML('afterbegin', `<p class="chip exitnz">scan ${esc(v.spec)}: the tool JAR changed during the run (${esc(v.toolBefore?.modified)} -> ${esc(v.toolAfter?.modified)}); later cases used the new build</p>`);
   }
@@ -168,12 +213,24 @@ function renderOverview() {
 // ---------------------------------------------------------------------------------------------------------------
 async function loadCaseRecord(version) {
   const def = state.cases.find((c) => c.id === state.caseId);
+  const live = caseState(version, def.id);
+  if (live === 'pending' || !version.dir) {
+    return { version: version.spec, pending: true };
+  }
   const key = `${state.run.id}|${version.dir}|${def.id}`;
   if (!state.cache.has(key)) {
-    state.cache.set(key, api(`/api/runs/${encodeURIComponent(state.run.id)}/${encodeURIComponent(version.dir)}/${def.category}/${def.name}`)
-      .catch((err) => ({ error: err.message })));
+    const p = api(`/api/runs/${encodeURIComponent(state.run.id)}/${encodeURIComponent(version.dir)}/${def.category}/${def.name}`)
+      .catch((err) => ({ error: err.message }));
+    state.cache.set(key, p);
+    // Only finished records are stable enough to cache.
+    p.then((r) => { if (r.error || r.status === 'running') state.cache.delete(key); });
   }
-  return state.cache.get(key);
+  const record = await state.cache.get(key);
+  return record.error && live === 'running' ? { version: version.spec, starting: true } : record;
+}
+
+function recordSig(r) {
+  return r ? JSON.stringify([r.status, r.error, r.pending, r.starting, r.steps?.length, r.currentStep?.index]) : '';
 }
 
 function ruleCounts(byRule) {
@@ -246,20 +303,49 @@ function stepHtml(step, record, otherStep) {
   </div>`;
 }
 
+function liveStepHtml(record) {
+  const s = record.currentStep;
+  if (!s) {
+    return `<div class="step live"><div class="step-head"><span class="dot live"></span><span class="n">between steps...</span></div></div>`;
+  }
+  return `<div class="step live">
+    <div class="step-head"><span class="dot live"></span><span class="n">${s.index}. ${esc(s.name)}</span>
+      ${s.setup ? '<span class="chip setup">setup</span>' : ''}
+      <span class="chip running">running</span>
+      <span class="dur elapsed" data-since="${esc(s.startedAt)}"></span></div>
+    <div class="cmd">${esc(s.command)}</div>
+    <pre class="term live-term ${s.combined ? '' : 'empty-out'}" data-ver="${esc(record.version)}">${esc(s.combined || '(no output yet)')}</pre>
+  </div>`;
+}
+
 function recordColumn(record, other) {
+  if (record.pending) {
+    return '<p class="muted"><span class="dot none"></span> Pending. Results will appear here automatically once this case runs.</p>';
+  }
+  if (record.starting) {
+    return '<p class="muted"><span class="dot live"></span> Starting...</p>';
+  }
   if (record.error) {
     return `<p class="muted">${esc(record.error)}</p>`;
   }
-  if (record.status !== 'ran') {
+  const running = record.status === 'running';
+  if (record.status !== 'ran' && !running) {
     return `<p class="chip">${esc(record.status)}: ${esc(record.skipReason)}</p>`;
   }
   const links = `<div class="links">
     <a href="${fileUrl(`${record.workDir}`)}" target="_blank">work folder</a>
-    <a href="${fileUrl(record.workDir.replace(/\/work$/, '/terminal.txt'))}" target="_blank">terminal.txt</a></div>`;
-  return links + record.steps.map((s) => stepHtml(s, record, other?.steps?.find((o) => o.index === s.index))).join('');
+    ${running ? '' : `<a href="${fileUrl(record.workDir.replace(/\/work$/, '/terminal.txt'))}" target="_blank">terminal.txt</a>`}</div>`;
+  const banner = running
+    ? (isLive() ? `<p class="muted">Running: step ${record.currentStep?.index ?? record.steps.length} of ${record.stepCount ?? '?'}. Completed steps appear as they finish.</p>`
+      : '<p class="chip exitnz">This case never finished (the run was interrupted).</p>')
+    : '';
+  const steps = record.steps.map((s) => stepHtml(s, record, other?.steps?.find((o) => o.index === s.index))).join('');
+  return banner + links + steps + (running && isLive() ? liveStepHtml(record) : '');
 }
 
-async function renderCase() {
+let renderSeq = 0;
+async function renderCase({ quiet = false } = {}) {
+  const token = ++renderSeq;
   const def = state.cases.find((c) => c.id === state.caseId);
   if (!def) {
     renderOverview();
@@ -287,21 +373,29 @@ async function renderCase() {
   const tabs = `<div class="version-tabs">${versions.map((v) => `<button data-v="${esc(v.spec)}" class="${v.spec === state.version ? 'on' : ''}">${esc(v.spec)}</button>`).join('')}
     ${versions.length > 1 ? `<label class="compare-toggle">compare with <select id="compareSelect"><option value="">-</option>
       ${versions.filter((v) => v.spec !== state.version).map((v) => `<option ${v.spec === state.compareWith ? 'selected' : ''}>${esc(v.spec)}</option>`).join('')}</select></label>` : ''}</div>`;
-  $('#detail').innerHTML = `${head}${tabs}<div id="caseBody" class="muted">Loading...</div>`;
+  if (!quiet) {
+    $('#detail').innerHTML = `${head}${tabs}<div id="caseBody" class="muted">Loading...</div>`;
+  }
 
   const primary = versions.find((v) => v.spec === state.version);
   const secondary = versions.find((v) => v.spec === state.compareWith && v.spec !== state.version);
   if (!primary) {
-    $('#caseBody').textContent = 'This run has no usable versions.';
+    $('#detail').innerHTML = `${head}${tabs}<div id="caseBody" class="muted">This run has no usable versions.</div>`;
     return;
   }
   const [a, b] = await Promise.all([loadCaseRecord(primary), secondary ? loadCaseRecord(secondary) : null]);
+  if (token !== renderSeq) return;
   const body = secondary
     ? `<div class="columns two"><div><div class="col-title">${esc(primary.spec)}</div>${recordColumn(a, b)}</div>
        <div><div class="col-title">${esc(secondary.spec)}</div>${recordColumn(b, a)}</div></div>`
     : `<div class="columns">${recordColumn(a)}</div>`;
-  $('#caseBody').outerHTML = `<div id="caseBody">${body}</div>`;
+  const scroll = $('#detail').scrollTop;
+  $('#detail').innerHTML = `${head}${tabs}<div id="caseBody">${body}</div>`;
+  $('#detail').scrollTop = scroll;
+  document.querySelectorAll('.live-term').forEach((pre) => { pre.scrollTop = pre.scrollHeight; });
+  tickElapsed();
   const records = [a, b].filter(Boolean);
+  state.shown = { caseId: def.id, runId: state.run.id, sig: records.map(recordSig).join('|') };
   document.querySelectorAll('.term-tabs').forEach((tabsEl) => {
     tabsEl.addEventListener('click', (e) => {
       const btn = e.target.closest('button');
@@ -324,6 +418,7 @@ function render() {
   if (state.caseId) {
     renderCase();
   } else {
+    renderSeq++;
     renderOverview();
   }
 }
@@ -348,9 +443,17 @@ async function refreshRuns(keepSelection = true) {
   renderRunSelect();
 }
 
+const FAST_POLL_MS = 1500;
+const IDLE_POLL_MS = 5000;
 let pollTimer = null;
-async function pollJob() {
-  const job = await api('/api/job');
+let followNewRun = false;
+
+function schedulePoll(ms) {
+  clearTimeout(pollTimer);
+  pollTimer = setTimeout(poll, document.hidden ? Math.max(ms, 15000) : ms);
+}
+
+function updateJob(job) {
   const log = $('#jobLog');
   if (job.log !== undefined) {
     log.classList.add('on');
@@ -360,30 +463,89 @@ async function pollJob() {
   }
   $('#startRun').disabled = job.running;
   $('#buildPluginsBtn').disabled = job.running;
-  if (job.running) {
-    pollTimer = setTimeout(pollJob, 1500);
-    if (job.kind === 'run') {
-      const before = state.run?.id;
-      await refreshRuns(false);
-      state.cache.clear();
-      if (state.run?.id !== before) render(); else renderSidebar();
+}
+
+function caseSig(caseId) {
+  return JSON.stringify(runVersions().map((v) => [v.spec, caseState(v, caseId), summaryFor(v, caseId)]));
+}
+
+// Polls both the UI-started job and results/ itself, so runs started from the CLI show up live too.
+async function poll() {
+  let active = false;
+  try {
+    const job = await api('/api/job');
+    updateJob(job);
+    const prev = state.run;
+    const prevLatest = state.runs[0]?.id;
+    const prevCaseSig = state.caseId ? caseSig(state.caseId) : '';
+    state.runs = await api('/api/runs');
+    active = job.running || state.runs.some((r) => isLive(r));
+
+    const newest = state.runs[0];
+    // Jump to a newly started run if we were already looking at the latest one (or just started it here).
+    if (newest && newest.id !== prevLatest && (followNewRun || !prev || prev.id === prevLatest)) {
+      state.run = newest;
+      followNewRun = false;
+    } else {
+      state.run = state.runs.find((r) => r.id === prev?.id) || state.runs[0] || null;
     }
-  } else {
-    pollTimer = null;
-    await refreshRuns(true);
-    state.cache.clear();
-    render();
+    const switched = state.run?.id !== prev?.id;
+    if (switched) state.cache.clear();
+    let rendered = false;
+    if (switched || JSON.stringify(state.run) !== JSON.stringify(prev)) {
+      renderRunSelect();
+      renderSidebar();
+      writeHash();
+      if (!state.caseId) {
+        renderOverview();
+      } else if (switched || caseSig(state.caseId) !== prevCaseSig) {
+        await renderCase({ quiet: !switched });
+        rendered = true;
+      }
+    }
+    if (!rendered && state.caseId && state.run && document.querySelector('.live-term, .step.live')) {
+      await refreshLiveCase();
+    }
+  } catch {
+    // Server restarting or briefly unreachable; try again on the next tick.
   }
+  schedulePoll(active ? FAST_POLL_MS : IDLE_POLL_MS);
+}
+
+// While a case is running, re-render only when a step finishes; otherwise just stream the current step's output.
+async function refreshLiveCase() {
+  const versions = runVersions();
+  const shown = [state.version, state.compareWith].map((s) => versions.find((v) => v.spec === s)).filter(Boolean);
+  const records = await Promise.all(shown.map(loadCaseRecord));
+  if (records.map(recordSig).join('|') !== state.shown?.sig) {
+    await renderCase({ quiet: true });
+    return;
+  }
+  for (const r of records) {
+    const pre = document.querySelector(`.live-term[data-ver="${CSS.escape(r.version)}"]`);
+    const text = r.currentStep?.combined;
+    if (!pre || !text || pre.textContent === text) continue;
+    const atBottom = pre.scrollTop + pre.clientHeight >= pre.scrollHeight - 20;
+    pre.textContent = text;
+    pre.classList.remove('empty-out');
+    if (atBottom) pre.scrollTop = pre.scrollHeight;
+  }
+}
+
+function tickElapsed() {
+  document.querySelectorAll('.elapsed[data-since]').forEach((el) => {
+    el.textContent = fmtMs(Math.max(0, Date.now() - Date.parse(el.dataset.since)));
+  });
 }
 
 async function startJob(body) {
   try {
     await api('/api/job', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    followNewRun = !body.plugins;
   } catch (err) {
     alert(err.message);
   }
-  history.replaceState(null, '', '#');
-  if (!pollTimer) pollJob();
+  schedulePoll(0);
 }
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -426,7 +588,7 @@ async function init() {
   };
   $('#caseList').addEventListener('click', pick);
   $('#detail').addEventListener('click', (e) => {
-    if (e.target.closest('.overview tr[data-id]')) pick(e);
+    if (e.target.closest('.overview tr[data-id], .live-list li[data-id]')) pick(e);
     const vb = e.target.closest('.version-tabs button[data-v]');
     if (vb) {
       state.version = vb.dataset.v;
@@ -443,7 +605,7 @@ async function init() {
   document.querySelector('.brand').addEventListener('click', () => { state.caseId = null; render(); });
   document.querySelector('.brand').style.cursor = 'pointer';
 
-  $('#newRunBtn').addEventListener('click', () => { $('#runDialog').showModal(); pollJob(); });
+  $('#newRunBtn').addEventListener('click', () => { $('#runDialog').showModal(); schedulePoll(0); });
   $('#closeDialog').addEventListener('click', () => $('#runDialog').close());
   $('#runForm').addEventListener('submit', (e) => {
     e.preventDefault();
@@ -452,8 +614,9 @@ async function init() {
       skipTags: f.skipTags.value.trim(), label: f.label.value.trim() });
   });
   $('#buildPluginsBtn').addEventListener('click', () => startJob({ plugins: true }));
-  const job = await api('/api/job');
-  if (job.running) pollJob();
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) schedulePoll(0); });
+  setInterval(tickElapsed, 1000);
+  schedulePoll(0);
 }
 
 init().catch((err) => {

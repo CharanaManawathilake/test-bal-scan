@@ -1,0 +1,10 @@
+# fail makes the playground recorder throw, like an upload that fails (needs the rebuilt plugins)
+[[platform]]
+name = "recorder"
+path = "${RECORDER_PLUGIN_JAR}"
+fail = "onScan"
+
+[[platform]]
+name = "recorder2"
+path = "${RECORDER_PLUGIN_JAR}"
+fail = "init"

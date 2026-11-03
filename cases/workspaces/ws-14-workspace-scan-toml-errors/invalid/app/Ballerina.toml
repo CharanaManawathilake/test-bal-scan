@@ -1,0 +1,4 @@
+[package]
+org = "playground"
+name = "app_invalid"
+version = "0.1.0"

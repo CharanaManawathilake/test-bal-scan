@@ -1,0 +1,115 @@
+{
+  "title": "Gate: --fail-on-severity, --fail-on-count and [gate] in Scan.toml",
+  "description": "Each sub folder is its own package with 1 HIGH, 2 MEDIUM and 3 LOW issues. A tripped gate exits 1 after the reports are written; it never removes issues from the output or the reports. Not available before 0.13.0. Each gate option on the command line replaces only its own field of [gate] in Scan.toml, and warns only when Scan.toml writes that field with a different value.",
+  "tags": [
+    "package",
+    "gate"
+  ],
+  "upstream": [
+    "GateTest",
+    "test-resources/bal-project-with-gate-issues",
+    "test-resources/bal-project-with-gate-configurations",
+    "test-resources/bal-project-with-invalid-gate-configurations"
+  ],
+  "setup": [
+    {
+      "name": "Lock dependencies (issues)",
+      "run": "bal build",
+      "cwd": "issues"
+    },
+    {
+      "name": "Lock dependencies (scan-toml-gate)",
+      "run": "bal build",
+      "cwd": "scan-toml-gate"
+    },
+    {
+      "name": "Lock dependencies (invalid-gate)",
+      "run": "bal build",
+      "cwd": "invalid-gate"
+    }
+  ],
+  "steps": [
+    {
+      "name": "No gate",
+      "run": "bal scan",
+      "cwd": "issues",
+      "note": "Findings alone never fail the scan."
+    },
+    {
+      "name": "--fail-on-severity=HIGH",
+      "run": "bal scan --fail-on-severity=HIGH",
+      "cwd": "issues",
+      "note": "Fails: 1 issue at or above HIGH."
+    },
+    {
+      "name": "--fail-on-severity=BLOCKER",
+      "run": "bal scan --fail-on-severity=BLOCKER",
+      "cwd": "issues",
+      "note": "Passes: no BLOCKER issue."
+    },
+    {
+      "name": "--fail-on-severity=medium --fail-on-count=3",
+      "run": "bal scan --fail-on-severity=medium --fail-on-count=3",
+      "cwd": "issues",
+      "note": "Fails: HIGH 1 + MEDIUM 2 reaches 3. The severity is case-insensitive."
+    },
+    {
+      "name": "--fail-on-count=7",
+      "run": "bal scan --fail-on-count=7",
+      "cwd": "issues",
+      "note": "Passes: 6 issues of any severity."
+    },
+    {
+      "name": "--exclude-rules + gate",
+      "run": "bal scan --exclude-rules=ballerina:13 --fail-on-severity=HIGH",
+      "cwd": "issues",
+      "note": "Passes: the gate counts only the issues left after rule selection."
+    },
+    {
+      "name": "--fail-on-severity=CRITICAL (usage error)",
+      "run": "bal scan --fail-on-severity=CRITICAL",
+      "cwd": "issues",
+      "note": "Exit 2 with the usage hint."
+    },
+    {
+      "name": "--fail-on-count=0 (usage error)",
+      "run": "bal scan --fail-on-count=0",
+      "cwd": "issues"
+    },
+    {
+      "name": "[gate] in Scan.toml",
+      "run": "bal scan",
+      "cwd": "scan-toml-gate",
+      "note": "Fails from failOnSeverity = \"HIGH\"."
+    },
+    {
+      "name": "--fail-on-severity=NONE overrides Scan.toml",
+      "run": "bal scan --fail-on-severity=NONE",
+      "cwd": "scan-toml-gate",
+      "note": "Passes, with a warning: --fail-on-severity=NONE overrides [gate] failOnSeverity = \"HIGH\" in Scan.toml."
+    },
+    {
+      "name": "--fail-on-count=2 replaces only failOnCount",
+      "run": "bal scan --fail-on-count=2",
+      "cwd": "scan-toml-gate",
+      "note": "The severity HIGH is kept from Scan.toml: 1 HIGH issue, below the count of 2, passes. No warning, since Scan.toml does not write failOnCount."
+    },
+    {
+      "name": "--fail-on-severity=LOW --fail-on-count=2",
+      "run": "bal scan --fail-on-severity=LOW --fail-on-count=2",
+      "cwd": "scan-toml-gate",
+      "note": "One warning for failOnSeverity only; 6 issues at or above LOW, fails."
+    },
+    {
+      "name": "--platform-triggered turns the gate off",
+      "run": "bal scan --platform-triggered",
+      "cwd": "scan-toml-gate"
+    },
+    {
+      "name": "Invalid [gate] values and keys",
+      "run": "bal scan",
+      "cwd": "invalid-gate",
+      "note": "Scan.toml has 3 errors, each with its line and column; nothing is scanned."
+    }
+  ]
+}

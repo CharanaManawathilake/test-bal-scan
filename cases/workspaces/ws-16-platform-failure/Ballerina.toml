@@ -1,0 +1,2 @@
+[workspace]
+packages = ["failing_pkg", "working_pkg"]

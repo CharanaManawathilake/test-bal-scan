@@ -1,0 +1,47 @@
+{
+  "title": "Order of a run with platforms: scan, save, platforms together, then the gate",
+  "description": "Both packages have 1 HIGH, 2 MEDIUM and 3 LOW issues. The recorders sleep in onScan (delayMillis), and print when they start and finish, so the output shows that they run at the same time and only after the results are printed, saved and summarised. In one-fails, recorder throws after its delay while recorder2 finishes; the scan fails on the platform error and the gate is not checked.",
+  "tags": [
+    "package",
+    "platform",
+    "gate"
+  ],
+  "upstream": [
+    "ScanCmdTest#testPlatformsRunTogetherAfterTheResultsAreSaved"
+  ],
+  "requires": {
+    "plugins": true
+  },
+  "setup": [
+    {
+      "name": "Lock dependencies (slow)",
+      "run": "bal build",
+      "cwd": "slow"
+    },
+    {
+      "name": "Lock dependencies (one-fails)",
+      "run": "bal build",
+      "cwd": "one-fails"
+    }
+  ],
+  "steps": [
+    {
+      "name": "Two slow platforms, then the gate",
+      "run": "bal scan --platforms=recorder,recorder2 --fail-on-severity=HIGH",
+      "cwd": "slow",
+      "note": "Both start before either finishes (about 3 s in total, not 6 s). Then the gate fails: 1 issue at or above HIGH, exit 1."
+    },
+    {
+      "name": "One platform fails",
+      "run": "bal scan --platforms=recorder,recorder2 --fail-on-severity=HIGH",
+      "cwd": "one-fails",
+      "note": "recorder2 still writes platform-recorder2-output.json. '1 platform failed to report the issues' with the reason; the gate is not checked, exit 1."
+    },
+    {
+      "name": "Only one platform selected",
+      "run": "bal scan --platforms=recorder2",
+      "cwd": "one-fails",
+      "note": "recorder is declared but not named, so it does not run; exit 0."
+    }
+  ]
+}

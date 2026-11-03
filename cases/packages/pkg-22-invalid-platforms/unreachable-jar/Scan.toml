@@ -13,4 +13,3 @@ include = [
     "ballerina/example_module_static_code_analyzer:1",
     "ballerinax/example_module_static_code_analyzer:1",
 ]
-exclude = ["ballerina:1"]

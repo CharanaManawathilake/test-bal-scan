@@ -1,6 +1,6 @@
 {
   "title": "Scan.toml [rule] filters (include) with custom analyzers",
-  "description": "Upstream fixture: Scan.toml declares exampleOrg/ballerina/ballerinax analyzers plus a [rule] table.",
+  "description": "Upstream fixture: Scan.toml declares exampleOrg/ballerina/ballerinax analyzers plus a [rule] table with include = [\"ballerina:1\"]. From 0.13.0 --include-rules or --exclude-rules replaces the whole [rule] table, with a warning that names what it drops; earlier versions add the CLI rules to the Scan.toml ones.",
   "tags": [
     "package",
     "scan-toml",
@@ -25,11 +25,13 @@
     },
     {
       "name": "Scan.toml + CLI include",
-      "run": "bal scan --include-rules=ballerina:13"
+      "run": "bal scan --include-rules=ballerina:13",
+      "note": "From 0.13.0 only ballerina:13 runs, with a warning: --include-rules=ballerina:13 overrides [rule] include = [\"ballerina:1\"] in Scan.toml. Before, ballerina:1 and ballerina:13 both run."
     },
     {
       "name": "Scan.toml + CLI exclude",
-      "run": "bal scan --exclude-rules=ballerina:13"
+      "run": "bal scan --exclude-rules=ballerina:13",
+      "note": "From 0.13.0 every rule but ballerina:13 runs, with the override warning. Before, this is the 'cannot include and exclude rules' error."
     }
   ]
 }

@@ -1,0 +1,5 @@
+[gate]
+failOnCount = 0
+
+[analysis]
+excludeTests = "yes"

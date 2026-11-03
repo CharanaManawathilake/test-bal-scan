@@ -9,6 +9,8 @@
     "clean:plugins": "node tools/build-test-plugins.mjs --clean",
     "test": "node runner/run.mjs",
     "run:all": "node runner/run.mjs",
+    "test:parallel": "node runner/run.mjs --jobs=4",
+    "test:parallel:offline": "node runner/run.mjs --jobs=4 --skip-tags=network,sonarqube",
     "ui": "node runner/serve.mjs",
     "list": "node runner/list-cases.mjs"
   },

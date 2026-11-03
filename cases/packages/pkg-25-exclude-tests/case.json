@@ -1,0 +1,81 @@
+{
+  "title": "Leaving the test sources out: --exclude-tests and [analysis] excludeTests",
+  "description": "main.bal has 1 core issue; tests/main_test.bal has 2 core issues (one suppressed) and a suppression that matches nothing. The analyzer adds one issue per document. With the tests excluded, only main.bal's core and analyzer issues remain, the unmatched-suppression warning is gone, and the HTML report does not list main_test.bal. Not available before 0.13.0. --exclude-tests takes an optional true/false value and overrides [analysis] excludeTests either way: written alone it means true, and --exclude-tests=false scans the tests even when Scan.toml leaves them out.",
+  "tags": [
+    "package",
+    "tests",
+    "analyzer",
+    "suppression"
+  ],
+  "upstream": [
+    "ExcludeTestsTest",
+    "test-resources/bal-project-with-tests"
+  ],
+  "requires": {
+    "plugins": true
+  },
+  "setup": [
+    {
+      "name": "Lock dependencies (cli)",
+      "run": "bal build",
+      "cwd": "cli"
+    },
+    {
+      "name": "Lock dependencies (scan-toml)",
+      "run": "bal build",
+      "cwd": "scan-toml"
+    },
+    {
+      "name": "Lock dependencies (invalid)",
+      "run": "bal build",
+      "cwd": "invalid"
+    }
+  ],
+  "steps": [
+    {
+      "name": "Tests scanned by default",
+      "run": "bal scan",
+      "cwd": "cli"
+    },
+    {
+      "name": "--exclude-tests",
+      "run": "bal scan --exclude-tests",
+      "cwd": "cli"
+    },
+    {
+      "name": "--exclude-tests --scan-report",
+      "run": "bal scan --exclude-tests --scan-report",
+      "cwd": "cli",
+      "note": "Open the HTML report: main_test.bal is not listed."
+    },
+    {
+      "name": "--exclude-tests with the gate",
+      "run": "bal scan --exclude-tests --fail-on-count=3",
+      "cwd": "cli",
+      "note": "Passes: 2 issues are left once the tests are excluded."
+    },
+    {
+      "name": "[analysis] excludeTests = true",
+      "run": "bal scan",
+      "cwd": "scan-toml"
+    },
+    {
+      "name": "--exclude-tests=false overrides Scan.toml",
+      "run": "bal scan --exclude-tests=false",
+      "cwd": "scan-toml",
+      "note": "The test file is scanned again despite excludeTests = true: its issues and the unmatched-suppression warning are back. Earlier builds take no value for the option and reject it."
+    },
+    {
+      "name": "--exclude-tests=true",
+      "run": "bal scan --exclude-tests=true",
+      "cwd": "cli",
+      "note": "Same as --exclude-tests."
+    },
+    {
+      "name": "Invalid [analysis] value and key",
+      "run": "bal scan",
+      "cwd": "invalid",
+      "note": "Scan.toml has 2 errors; nothing is scanned."
+    }
+  ]
+}

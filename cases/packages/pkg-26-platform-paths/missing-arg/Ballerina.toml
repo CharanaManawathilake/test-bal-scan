@@ -1,0 +1,4 @@
+[package]
+org = "playground"
+name = "platform_paths_missing_arg"
+version = "0.1.0"

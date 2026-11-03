@@ -1,5 +1,6 @@
 {
   "title": "Report a workspace to SonarQube",
+  "description": "Each package has its own sonar-project.properties (project key <key>-greeter_lib and <key>-hello_app) next to its Scan.toml. With one shared properties file both packages upload to the same Sonar project and the second overwrites the first. A workspace Scan.toml cannot declare [[platform]] (see ws-14).",
   "tags": [
     "workspace",
     "platform",

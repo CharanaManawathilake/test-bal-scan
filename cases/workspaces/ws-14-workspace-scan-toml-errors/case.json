@@ -1,0 +1,50 @@
+{
+  "title": "Workspace Scan.toml: configPath, [[platform]] and invalid settings",
+  "description": "Each sub folder is a workspace with one package. A workspace Scan.toml cannot set [[platform]]: the scan stops with an error at its location. It can be found through [scan] configPath in the workspace Ballerina.toml. Invalid settings are reported once for the workspace, not once per package.",
+  "tags": [
+    "workspace",
+    "scan-toml",
+    "config-path",
+    "errors"
+  ],
+  "upstream": [
+    "GateTest#testWorkspacePlatformNotAllowed"
+  ],
+  "setup": [
+    {
+      "name": "Lock dependencies (platform)",
+      "run": "bal build",
+      "cwd": "platform"
+    },
+    {
+      "name": "Lock dependencies (config-path)",
+      "run": "bal build",
+      "cwd": "config-path"
+    },
+    {
+      "name": "Lock dependencies (invalid)",
+      "run": "bal build",
+      "cwd": "invalid"
+    }
+  ],
+  "steps": [
+    {
+      "name": "[[platform]] in the workspace Scan.toml",
+      "run": "bal scan",
+      "cwd": "platform",
+      "note": "Error: [[platform]] cannot be set in a workspace Scan.toml."
+    },
+    {
+      "name": "Workspace Scan.toml through configPath",
+      "run": "bal scan",
+      "cwd": "config-path",
+      "note": "The package inherits failOnSeverity = \"HIGH\" and fails. Also records whether bal build accepts [scan] in a workspace Ballerina.toml."
+    },
+    {
+      "name": "Invalid workspace settings",
+      "run": "bal scan",
+      "cwd": "invalid",
+      "note": "Scan.toml has 2 errors."
+    }
+  ]
+}

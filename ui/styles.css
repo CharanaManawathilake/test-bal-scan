@@ -91,6 +91,23 @@ select, input[type=search], input:not([type]) {
 .dot.err { background: transparent; border: 2px solid var(--warn); }
 .dot.none { background: transparent; border: 1px dashed var(--skip); }
 .cell.skipped .dots::after { content: "skipped"; font-size: 10px; color: var(--skip); }
+.dot { display: inline-block; vertical-align: middle; }
+.dot.live { background: var(--accent); animation: pulse 1.1s ease-in-out infinite; }
+.cell.running { color: var(--accent); }
+@keyframes pulse { 50% { opacity: .25; } }
+@media (prefers-reduced-motion: reduce) { .dot.live { animation: none; } }
+
+.progress { background: var(--panel); border: 1px solid var(--accent); border-radius: 8px; padding: 10px 14px; margin: 12px 0; display: grid; gap: 10px; }
+.progress-title { font-weight: 600; color: var(--accent); display: flex; align-items: center; gap: 8px; }
+.progress-head { font-size: 13px; }
+.bar { height: 6px; border-radius: 3px; background: var(--panel-2); overflow: hidden; margin-top: 4px; }
+.bar > div { height: 100%; background: var(--accent); transition: width .4s; }
+.live-list { list-style: none; margin: 6px 0 0; padding: 0; font-size: 12.5px; }
+.live-list li { padding: 2px 4px; border-radius: 4px; cursor: pointer; }
+.live-list li:hover { background: var(--panel-2); }
+.overview td.live-cell { color: var(--accent); }
+.chip.running { background: var(--accent-soft); color: var(--accent); border-color: transparent; }
+.step.live { border-color: var(--accent); }
 .cell.differs { outline: 1px solid var(--diff); border-radius: 4px; }
 
 .detail { overflow: auto; padding: 18px 22px 60px; }

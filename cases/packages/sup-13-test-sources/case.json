@@ -12,6 +12,11 @@
     {
       "name": "Scan",
       "run": "bal scan"
+    },
+    {
+      "name": "--exclude-tests",
+      "run": "bal scan --exclude-tests",
+      "note": "0.13.0+: the test file is not scanned, so its issue and its suppression are both gone."
     }
   ]
 }

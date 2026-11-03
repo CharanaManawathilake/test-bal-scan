@@ -1,0 +1,2 @@
+[workspace]
+packages = ["inherits", "own_gate", "own_rule"]

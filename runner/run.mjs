@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 // Runs every playground case against each scan tool version in SCAN_VERSIONS and records what happened.
 // Usage: node runner/run.mjs [--versions=a,b@local] [--cases=packages/*,sf-01*] [--tags=x] [--skip-tags=y]
-//                            [--label=name] [--no-restore] [--env=path/to/.env]
+//                            [--label=name] [--no-restore] [--env=path/to/.env] [--jobs=N]
+//                            [--serial-tags=network,sonarqube]
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -9,7 +10,7 @@ import { loadCases, filterCases } from './lib/cases.mjs';
 import {
   ROOT, RESULTS_DIR, PLUGINS_OUT_DIR, loadConfig, list, bool, redact, secretValues, interpolate,
 } from './lib/env.mjs';
-import { runCommand, stripAnsi } from './lib/proc.mjs';
+import { runCommand, stripAnsi, mask } from './lib/proc.mjs';
 import { snapshot, diffSnapshots, copyDir } from './lib/snapshot.mjs';
 import { observeStep } from './lib/observe.mjs';
 import { parseVersionSpec, switchScanVersion, activeScanVersion, activeToolFingerprint } from './lib/tool.mjs';
@@ -27,7 +28,18 @@ function parseArgs(argv) {
 
 const slug = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60);
 const posix = (p) => p.split(path.sep).join('/');
-const writeJson = (file, data) => fs.writeFileSync(file, JSON.stringify(data, null, 2));
+// The UI polls these files while a run is in progress, so write via rename to never expose a half-written file.
+function writeJson(file, data) {
+  const text = JSON.stringify(data, null, 2);
+  const tmp = `${file}.${process.pid}.tmp`;
+  fs.writeFileSync(tmp, text);
+  try {
+    fs.renameSync(tmp, file);
+  } catch {
+    fs.writeFileSync(file, text);
+    fs.rmSync(tmp, { force: true });
+  }
+}
 
 function readActiveToolEntry() {
   const file = path.join(os.homedir(), '.ballerina', '.config', 'bal-tools.toml');
@@ -87,7 +99,7 @@ function formatChanges(changes) {
   return lines.length ? lines.join('\n') : '  (no file changes)';
 }
 
-async function runCase(testCase, ctx) {
+async function runCase(testCase, ctx, out) {
   const caseOut = path.join(ctx.versionDir, testCase.category, testCase.name);
   const workDir = path.join(caseOut, 'work');
   fs.rmSync(caseOut, { recursive: true, force: true });
@@ -104,9 +116,10 @@ async function runCase(testCase, ctx) {
     notes: testCase.notes,
     version: ctx.version.spec,
     startedAt: new Date().toISOString(),
-    status: 'ran',
+    status: 'running',
     steps: [],
   };
+  const saveRecord = () => writeJson(path.join(caseOut, 'case.json'), record);
   const terminal = [
     `${'='.repeat(100)}`,
     `CASE ${testCase.id} :: ${testCase.title}`,
@@ -139,8 +152,10 @@ async function runCase(testCase, ctx) {
   };
   renderTemplates(workDir, vars);
   record.workDir = posix(path.relative(ROOT, workDir));
-
   const allSteps = [...testCase.setup, ...testCase.steps];
+  record.stepCount = allSteps.length;
+  saveRecord();
+
   for (let i = 0; i < allSteps.length; i++) {
     const step = allSteps[i];
     const command = interpolate(step.run, vars).replace(/^bal(?=\s|$)/, ctx.bal);
@@ -151,16 +166,30 @@ async function runCase(testCase, ctx) {
       env[k] = interpolate(String(v), vars);
     }
     const before = snapshot(workDir);
-    process.stdout.write(`  [${i + 1}/${allSteps.length}] ${step.setup ? '(setup) ' : ''}${command} ... `);
-    const result = await runCommand(command, { cwd, env, timeoutMs: ctx.timeoutMs, secrets: ctx.secrets });
-    const changes = diffSnapshots(before, snapshot(workDir));
+    out(`  [${i + 1}/${allSteps.length}] ${step.setup ? '(setup) ' : ''}${command} ... `);
     const stepDir = path.join(caseOut, 'steps', `${String(i + 1).padStart(2, '0')}-${slug(step.name || command)}`);
     fs.mkdirSync(stepDir, { recursive: true });
+    const liveFile = path.join(stepDir, 'live.txt');
+    record.currentStep = {
+      index: i + 1,
+      name: step.name || command,
+      setup: Boolean(step.setup),
+      command: mask(command, ctx.secrets),
+      startedAt: new Date().toISOString(),
+      liveOutput: posix(path.relative(ROOT, liveFile)),
+    };
+    saveRecord();
+    const result = await runCommand(command, {
+      cwd, env, timeoutMs: ctx.timeoutMs, secrets: ctx.secrets,
+      onData: (text) => fs.appendFileSync(liveFile, text),
+    });
+    fs.rmSync(liveFile, { force: true });
+    const changes = diffSnapshots(before, snapshot(workDir));
     fs.writeFileSync(path.join(stepDir, 'stdout.txt'), stripAnsi(result.stdout));
     fs.writeFileSync(path.join(stepDir, 'stderr.txt'), stripAnsi(result.stderr));
     fs.writeFileSync(path.join(stepDir, 'combined.txt'), stripAnsi(result.combined));
     const observations = observeStep(result, changes, workDir);
-    console.log(`exit ${result.exitCode}${result.timedOut ? ' (timeout)' : ''} in ${(result.durationMs / 1000).toFixed(1)}s`);
+    out(`exit ${result.exitCode}${result.timedOut ? ' (timeout)' : ''} in ${(result.durationMs / 1000).toFixed(1)}s\n`);
 
     record.steps.push({
       index: i + 1,
@@ -178,6 +207,8 @@ async function runCase(testCase, ctx) {
       changes,
       observations,
     });
+    record.currentStep = null;
+    saveRecord();
     const shownCwd = posix(path.relative(ctx.runDir, cwd));
     terminal.push(
       '',
@@ -190,10 +221,12 @@ async function runCase(testCase, ctx) {
       formatChanges(changes),
     );
   }
+  record.status = 'ran';
+  delete record.currentStep;
   record.finishedAt = new Date().toISOString();
   terminal.push('');
   fs.writeFileSync(path.join(caseOut, 'terminal.txt'), terminal.filter((l) => l !== '').join('\n') + '\n');
-  writeJson(path.join(caseOut, 'case.json'), record);
+  saveRecord();
   return record;
 }
 
@@ -208,7 +241,7 @@ function caseSummary(record) {
     skipReason: record.skipReason,
     exitCodes: scanSteps.map((s) => s.exitCode),
     setupExitCodes: record.steps.filter((s) => s.setup).map((s) => s.exitCode),
-    // bal.bat on Windows exits 0 even on failure, so printed errors are tracked separately.
+    // Printed errors are tracked separately from exit codes, since some failures still exit 0.
     errorFlags: scanSteps.map((s) => (s.observations?.errors?.length || 0) > 0),
     setupErrors: record.steps.filter((s) => s.setup && s.observations?.errors?.length).length,
     issueTotals: scanSteps.map((s) => s.observations?.stdoutIssues?.total ?? null),
@@ -231,6 +264,12 @@ async function main() {
     skipTags: list(args['skip-tags'] || config.SKIP_TAGS),
   });
 
+  const jobs = Math.max(1, Number.parseInt(args.jobs || config.JOBS || '1', 10) || 1);
+  // Cases with these tags share global state (Ballerina Central cache, the SonarQube server), so they never overlap.
+  const serialTags = list(args['serial-tags'] ?? (config.SERIAL_TAGS || 'network,sonarqube'));
+  const isSerial = (c) => c.tags.some((t) => serialTags.includes(t));
+  const serialCount = cases.filter(isSerial).length;
+
   const env = { ...process.env };
   for (const [k, v] of Object.entries(config)) {
     if (v !== '') {
@@ -242,7 +281,9 @@ async function main() {
     env.Path = env.PATH;
   }
 
-  const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+  const now = new Date();
+  // Local time, not UTC, so run IDs match the user's wall clock.
+  const stamp = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().replace(/[:.]/g, '-').slice(0, 19);
   const runId = args.label ? `${stamp}_${slug(args.label)}` : stamp;
   const runDir = path.join(RESULTS_DIR, runId);
   fs.mkdirSync(runDir, { recursive: true });
@@ -258,12 +299,14 @@ async function main() {
     balVersion: stripAnsi(balVersion.combined).trim(),
     originalActiveScanVersion: originalActive,
     config: redact(config),
-    versions: versions.map((v) => ({ ...v, status: 'pending', cases: [] })),
+    versions: versions.map((v) => ({ ...v, status: 'pending', cases: [], running: [] })),
     caseCount: cases.length,
+    caseIds: cases.map((c) => c.id),
+    pid: process.pid,
   };
   const saveRun = () => writeJson(path.join(runDir, 'run.json'), run);
   saveRun();
-  console.log(`Run ${runId}: ${cases.length} case(s) x ${versions.length} version(s)\nResults: ${runDir}\n`);
+  console.log(`Run ${runId}: ${cases.length} case(s) x ${versions.length} version(s), ${jobs} parallel job(s), ${serialCount} serial case(s)\nResults: ${runDir}\n`);
 
   const terminalLog = [`bal scan playground run ${runId}`, run.balVersion, ''];
   for (const versionEntry of run.versions) {
@@ -293,25 +336,59 @@ async function main() {
       timeoutMs: Number(config.STEP_TIMEOUT_SECONDS || 600) * 1000,
       secrets: secretValues(config),
     };
-    for (const testCase of cases) {
-      console.log(`[${version.spec}] ${testCase.id}`);
+    const width = String(cases.length).length;
+    const summaries = new Array(cases.length);
+    let completed = 0;
+    const serialQueue = cases.map((_, i) => i).filter((i) => isSerial(cases[i]));
+    const parallelQueue = cases.map((_, i) => i).filter((i) => !isSerial(cases[i]));
+    const runOne = async (i) => {
+      const testCase = cases[i];
+      const label = `[${version.spec}] ${testCase.id}${isSerial(testCase) ? ' (serial)' : ''}`;
+      // With jobs > 1, each case's output is buffered and printed as one block when it finishes.
+      let buffer = '';
+      const out = jobs > 1 ? (s) => { buffer += s; } : (s) => process.stdout.write(s);
+      if (jobs === 1) {
+        out(`(${String(completed + 1).padStart(width)}/${cases.length}) ${label}\n`);
+      }
+      versionEntry.running.push(testCase.id);
+      saveRun();
       let record;
       try {
-        record = await runCase(testCase, ctx);
+        record = await runCase(testCase, ctx, out);
       } catch (err) {
         record = { id: testCase.id, title: testCase.title, category: testCase.category, tags: testCase.tags,
           status: 'runner-error', skipReason: String(err?.stack || err), steps: [] };
-        console.log(`    runner error: ${err?.message}`);
+        out(`    runner error: ${err?.message}\n`);
       }
       if (record.status === 'skipped') {
-        console.log(`    skipped: ${record.skipReason}`);
+        out(`    skipped: ${record.skipReason}\n`);
       }
-      versionEntry.cases.push(caseSummary(record));
+      completed++;
+      if (jobs > 1) {
+        process.stdout.write(`(${String(completed).padStart(width)}/${cases.length}) ${label}\n${buffer}`);
+      }
+      summaries[i] = caseSummary(record);
+      versionEntry.cases = summaries.filter(Boolean);
+      versionEntry.running = versionEntry.running.filter((id) => id !== testCase.id);
+      saveRun();
+    };
+    // Serial cases get one lane that starts right away; once it drains, it joins the parallel lanes.
+    const drain = async (queue) => {
+      while (queue.length) {
+        await runOne(queue.shift());
+      }
+    };
+    await Promise.all(Array.from({ length: Math.min(jobs, cases.length) }, async (_, lane) => {
+      if (lane === 0) {
+        await drain(serialQueue);
+      }
+      await drain(parallelQueue);
+    }));
+    for (const testCase of cases) {
       const caseTerminal = path.join(versionDir, testCase.category, testCase.name, 'terminal.txt');
       if (fs.existsSync(caseTerminal)) {
         terminalLog.push(fs.readFileSync(caseTerminal, 'utf8'));
       }
-      saveRun();
     }
     versionEntry.status = 'done';
     versionEntry.toolAfter = activeToolFingerprint();

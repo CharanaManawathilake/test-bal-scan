@@ -1,6 +1,6 @@
 {
   "title": "Reporting to a platform plugin declared in Scan.toml",
-  "description": "The playground \"recorder\" plugin writes what it receives to platform-recorder-output.json in the working directory.",
+  "description": "The playground \"recorder\" plugin writes what it receives to platform-recorder-output.json in the working directory. A declared platform is reported to only when --platforms names it. The results are always printed and saved first; the platform runs after the summary. From 0.13.0, sonarProjectPropertiesPath (any argument ending in \"Path\") is resolved next to Scan.toml and reaches the plugin as an absolute path, so the case ships a sonar-project.properties for it.",
   "tags": [
     "package",
     "platform"
@@ -15,28 +15,32 @@
   },
   "steps": [
     {
-      "name": "Declared platform is reported automatically",
-      "run": "bal scan"
+      "name": "Declared platform is not reported without --platforms",
+      "run": "bal scan",
+      "note": "No 'Reporting issues to' line and no platform-recorder-output.json; the issues are printed and saved as usual."
     },
     {
       "name": "--platforms=recorder",
-      "run": "bal scan --platforms=recorder"
+      "run": "bal scan --platforms=recorder",
+      "note": "The issues are printed, scan_results.json is saved and the summary is printed; then 'Reporting issues to: recorder'."
     },
     {
       "name": "--platforms=recorder,unknown",
-      "run": "bal scan --platforms=\"recorder, unknown\""
+      "run": "bal scan --platforms=\"recorder, unknown\"",
+      "note": "Fails before scanning: platform 'unknown' is not available (exit 1). Nothing is printed or saved."
     },
     {
       "name": "--platform-triggered (hidden flag used by platforms)",
-      "run": "bal scan --platform-triggered --platforms=recorder"
+      "run": "bal scan --platform-triggered --platforms=recorder",
+      "note": "No console output or saved report; the recorder gets initiatedByPlatform = true."
     },
     {
       "name": "Platform + --scan-report",
-      "run": "bal scan --scan-report"
+      "run": "bal scan --platforms=recorder --scan-report"
     },
     {
       "name": "Platform + --exclude-rules",
-      "run": "bal scan --exclude-rules=ballerina:1"
+      "run": "bal scan --platforms=recorder --exclude-rules=ballerina:1"
     }
   ]
 }

@@ -1,0 +1,4 @@
+[package]
+org = "playground"
+name = "inherits"
+version = "0.1.0"

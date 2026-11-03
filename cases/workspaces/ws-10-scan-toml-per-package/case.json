@@ -1,5 +1,6 @@
 {
   "title": "Workspace packages with their own Scan.toml (and one at the workspace root)",
+  "description": "From 0.13.0 the workspace Scan.toml is the default for every package, and a package's own [rule] replaces the workspace [rule] as a whole. Both packages here set [rule], so the root include of ballerina:13 applies to neither. See ws-13 for packages that inherit it.",
   "tags": [
     "workspace",
     "scan-toml",
@@ -11,8 +12,9 @@
       "run": "bal scan"
     },
     {
-      "name": "CLI include on top",
-      "run": "bal scan --include-rules=ballerina:14"
+      "name": "CLI include replaces [rule]",
+      "run": "bal scan --include-rules=ballerina:14",
+      "note": "From 0.13.0 only ballerina:14 runs in both packages, with a warning per package that --include-rules=ballerina:14 overrides its own [rule]. Earlier versions add ballerina:14 to each package's rules (and hello_app, which excludes rules, fails with the include-and-exclude error)."
     }
   ]
 }

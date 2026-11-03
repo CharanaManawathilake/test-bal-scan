@@ -1,0 +1,44 @@
+{
+  "title": "Workspace Scan.toml as the default of each package",
+  "description": "The root Scan.toml sets [rule], [gate] and [analysis]. A package uses either its own Scan.toml as a whole or, when it has none, the workspace one; nothing is merged. inherits has no Scan.toml and uses the workspace file (its tests are excluded and its ballerina:13 issue too). own_gate has its own file with only failOnCount = 3, so it has no rule exclusions, no test exclusion and no severity. own_rule has its own file with include = [], so it has no gate at all. Each package with its own file gets one warning listing the workspace settings it does not apply. The analyzer rule in the root [rule] is not a rule of inherits, so it gets a warning.",
+  "tags": [
+    "workspace",
+    "scan-toml",
+    "gate",
+    "tests",
+    "rules"
+  ],
+  "upstream": [
+    "GateTest#testWorkspaceScanTomlIsUsedAsAWhole",
+    "GateTest#testWorkspaceRuleDefault",
+    "ScanTomlFileTest"
+  ],
+  "steps": [
+    {
+      "name": "Scan",
+      "run": "bal scan",
+      "note": "Stage 1 warnings for own_gate and own_rule. Only inherits uses failOnSeverity = \"LOW\"."
+    },
+    {
+      "name": "--fail-on-severity=NONE",
+      "run": "bal scan --fail-on-severity=NONE",
+      "note": "Passes; the stage 2 warning names the workspace Scan.toml once (only inherits uses it)."
+    },
+    {
+      "name": "--fail-on-count=3",
+      "run": "bal scan --fail-on-count=3",
+      "note": "Only the count is replaced. inherits keeps failOnSeverity = \"LOW\" from the workspace file; own_gate's file writes failOnCount = 3, so no warning for it."
+    },
+    {
+      "name": "--scan-report",
+      "run": "bal scan --scan-report --fail-on-severity=NONE",
+      "note": "The HTML report leaves out inherits/tests/main_test.bal."
+    },
+    {
+      "name": "bal scan inside a package",
+      "run": "bal scan",
+      "cwd": "inherits",
+      "note": "Inside a workspace package, bal scan still scans the whole workspace (as in ws-04), so the result matches the first step."
+    }
+  ]
+}
