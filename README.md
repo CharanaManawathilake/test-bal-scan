@@ -26,6 +26,8 @@ Useful variations:
 
 ```bash
 node runner/run.mjs --versions=0.12.0,0.13.0-SNAPSHOT        # override SCAN_VERSIONS for one run
+node runner/run.mjs --versions=0.11.1@dev,0.13.0@dev          # pull from dev Central and run the cases against dev
+node runner/run.mjs --central=stage                            # whole run against stage Central
 node runner/run.mjs --cases="packages/sup-*" --label=suppr     # only some cases, with a run name
 node runner/run.mjs --tags=core-rules                          # by tag
 node runner/run.mjs --skip-tags=sonarqube,network              # leave some out
@@ -38,7 +40,8 @@ npm run list                                                   # print the case 
 
 | Key | Meaning |
 |---|---|
-| `SCAN_VERSIONS` | Comma-separated scan tool versions. You can add `@central` (the default), `@local` (uses `--repository=local`), `@dev` (sets `BALLERINA_DEV_CENTRAL=true`) or `@stage`. For each version the runner tries `bal tool use scan:<v>`, then `bal tool pull scan:<v>`, and then checks `bal tool list`. If that version still isn't active, it is marked **unavailable**, its cases are skipped, and the log is saved in `tool-switch.txt`. |
+| `SCAN_VERSIONS` | Comma-separated scan tool versions. You can add `@central` (the default), `@local` (uses `--repository=local`), `@dev` (sets `BALLERINA_DEV_CENTRAL=true`) or `@stage`. A `@dev`/`@stage` version also runs its cases against that Central. For each version the runner tries `bal tool use scan:<v>`, then `bal tool pull scan:<v>`, and then checks `bal tool list`. If that version still isn't active, it is marked **unavailable**, its cases are skipped, and the log is saved in `tool-switch.txt`. |
+| `CENTRAL` | `central`, `dev` or `stage`: the Ballerina Central the whole run uses, for the tool pull and every case step (`bal build`, dependency and analyzer pulls, `bal scan`). It sets `BALLERINA_DEV_CENTRAL` or `BALLERINA_STAGE_CENTRAL` and clears the other. Empty leaves whatever the shell has. A `@dev`, `@stage` or `@central` suffix on a version overrides it for that version. `--central=` and the Central selector in **New run** override it. |
 | `RESTORE_ACTIVE_VERSION` | Switches back to the scan version that was active before the run (default `true`). |
 | `CASES`, `TAGS`, `SKIP_TAGS` | Default case selection. The command-line flags override these. |
 | `JOBS` | How many cases run at the same time for each scan version (default `1`). `--jobs=N` overrides it. Scan versions still run one after another. |

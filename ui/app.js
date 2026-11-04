@@ -184,10 +184,11 @@ function renderOverview() {
   $('#detail').innerHTML = `
     <h1>Run ${esc(run.id)}</h1>
     <div class="muted">${esc(run.balVersion.split('\n')[0] || '')} · started ${esc(new Date(run.startedAt).toLocaleString())}
-      · status ${esc(run.status)} · scan tool active before the run: ${esc(run.originalActiveScanVersion || '?')}</div>
+      · status ${esc(run.status)} · scan tool active before the run: ${esc(run.originalActiveScanVersion || '?')}
+      · Central: ${esc(run.central || 'default')}</div>
     ${progressHtml(run)}
     <div class="stat-row">
-      <div class="stat"><div class="v">${versions.length}</div><div class="l">versions (${esc(versions.map((v) => `${v.spec}: ${v.status}`).join(', '))})</div></div>
+      <div class="stat"><div class="v">${versions.length}</div><div class="l">versions (${esc(versions.map((v) => `${v.spec}${v.central && !v.spec.includes('@') ? ` [${v.central}]` : ''}: ${v.status}`).join(', '))})</div></div>
       <div class="stat"><div class="v">${ran.length}</div><div class="l">case runs recorded</div></div>
       <div class="stat"><div class="v">${all.length - ran.length}</div><div class="l">skipped</div></div>
       <div class="stat"><div class="v">${nonZero}</div><div class="l">with a non-zero exit or printed errors</div></div>
@@ -611,7 +612,7 @@ async function init() {
     e.preventDefault();
     const f = e.target.elements;
     startJob({ versions: f.versions.value.trim(), cases: f.cases.value.trim(), tags: f.tags.value.trim(),
-      skipTags: f.skipTags.value.trim(), label: f.label.value.trim() });
+      skipTags: f.skipTags.value.trim(), label: f.label.value.trim(), central: f.central.value });
   });
   $('#buildPluginsBtn').addEventListener('click', () => startJob({ plugins: true }));
   document.addEventListener('visibilitychange', () => { if (!document.hidden) schedulePoll(0); });

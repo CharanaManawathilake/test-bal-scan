@@ -40,6 +40,15 @@
       <h2>Start a run</h2>
       <p class="muted">Runs <code>node runner/run.mjs</code> with these values (empty = take them from <code>.env</code>).</p>
       <label>Scan versions <input name="versions" placeholder="0.12.0,0.13.0-SNAPSHOT@local"></label>
+      <label>Ballerina Central
+        <select name="central">
+          <option value="">From .env (CENTRAL)</option>
+          <option value="central">central (production)</option>
+          <option value="dev">dev (BALLERINA_DEV_CENTRAL=true)</option>
+          <option value="stage">stage (BALLERINA_STAGE_CENTRAL=true)</option>
+        </select>
+        <span>Used for the tool pull and every case step. A <code>@dev</code>, <code>@stage</code> or <code>@central</code> suffix on a version overrides it for that version.</span>
+      </label>
       <label>Cases <input name="cases" placeholder="packages/*,sf-0*"></label>
       <label>Tags <input name="tags" placeholder="suppression,core-rules"></label>
       <label>Skip tags <input name="skipTags" placeholder="sonarqube,network"></label>

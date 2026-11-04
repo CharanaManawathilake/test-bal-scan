@@ -115,7 +115,7 @@ function readBody(req) {
   });
 }
 
-function startJob({ versions, cases, tags, skipTags, label, plugins }) {
+function startJob({ versions, cases, tags, skipTags, label, central, plugins }) {
   const script = plugins ? path.join(ROOT, 'tools', 'build-test-plugins.mjs') : path.join(ROOT, 'runner', 'run.mjs');
   const args = [script];
   if (!plugins) {
@@ -124,6 +124,7 @@ function startJob({ versions, cases, tags, skipTags, label, plugins }) {
     if (tags) args.push(`--tags=${tags}`);
     if (skipTags) args.push(`--skip-tags=${skipTags}`);
     if (label) args.push(`--label=${label}`);
+    if (central) args.push(`--central=${central}`);
   }
   const child = spawn(process.execPath, args, { cwd: ROOT, env: process.env, windowsHide: true });
   job = { pid: child.pid, args: args.slice(1), kind: plugins ? 'plugins' : 'run', startedAt: new Date().toISOString(), running: true, log: '', exitCode: null };

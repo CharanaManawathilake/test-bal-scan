@@ -4,14 +4,28 @@ import os from 'node:os';
 import path from 'node:path';
 import { runCommand } from './proc.mjs';
 
-const REPO_ENV = {
-  dev: { BALLERINA_DEV_CENTRAL: 'true' },
-  stage: { BALLERINA_STAGE_CENTRAL: 'true' },
-};
+const CENTRAL_ENV = { dev: 'BALLERINA_DEV_CENTRAL', stage: 'BALLERINA_STAGE_CENTRAL' };
+export const CENTRALS = ['central', 'dev', 'stage'];
+
+/** Points bal at the given Ballerina Central (central, dev or stage); an empty name leaves the env as it is. */
+export function withCentral(env, central) {
+  if (!central) {
+    return env;
+  }
+  const out = { ...env };
+  for (const key of Object.values(CENTRAL_ENV)) {
+    delete out[key];
+  }
+  if (CENTRAL_ENV[central]) {
+    out[CENTRAL_ENV[central]] = 'true';
+  }
+  return out;
+}
 
 export function parseVersionSpec(spec) {
-  const [version, repo = 'central'] = spec.split('@').map((s) => s.trim());
-  return { spec, version, repo: repo.toLowerCase() };
+  const [version, suffix = ''] = spec.split('@').map((s) => s.trim());
+  const repo = suffix.toLowerCase() || 'central';
+  return { spec, version, repo, central: CENTRALS.includes(suffix.toLowerCase()) ? repo : null };
 }
 
 export async function activeScanVersion(bal, env) {
@@ -53,8 +67,8 @@ export function activeToolFingerprint() {
  * Makes the given scan tool version the active one: `bal tool use`, then `bal tool pull` and `use` again,
  * and confirms the switch through `bal tool list`.
  */
-export async function switchScanVersion(bal, { version, repo }, baseEnv) {
-  const env = { ...baseEnv, ...(REPO_ENV[repo] || {}) };
+export async function switchScanVersion(bal, { version, repo, central }, baseEnv) {
+  const env = withCentral(baseEnv, central);
   const repoFlag = repo === 'local' ? ' --repository=local' : '';
   const log = [];
   // After a pull, bal keeps a higher installed version active until `use` is run again.

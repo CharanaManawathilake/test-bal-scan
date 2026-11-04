@@ -2,7 +2,7 @@
 // Runs every playground case against each scan tool version in SCAN_VERSIONS and records what happened.
 // Usage: node runner/run.mjs [--versions=a,b@local] [--cases=packages/*,sf-01*] [--tags=x] [--skip-tags=y]
 //                            [--label=name] [--no-restore] [--env=path/to/.env] [--jobs=N]
-//                            [--serial-tags=network,sonarqube]
+//                            [--serial-tags=network,sonarqube] [--central=central|dev|stage]
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -13,7 +13,9 @@ import {
 import { runCommand, stripAnsi, mask } from './lib/proc.mjs';
 import { snapshot, diffSnapshots, copyDir } from './lib/snapshot.mjs';
 import { observeStep } from './lib/observe.mjs';
-import { parseVersionSpec, switchScanVersion, activeScanVersion, activeToolFingerprint } from './lib/tool.mjs';
+import {
+  CENTRALS, parseVersionSpec, switchScanVersion, activeScanVersion, activeToolFingerprint, withCentral,
+} from './lib/tool.mjs';
 
 function parseArgs(argv) {
   const args = {};
@@ -115,6 +117,7 @@ async function runCase(testCase, ctx, out) {
     upstream: testCase.upstream,
     notes: testCase.notes,
     version: ctx.version.spec,
+    central: ctx.central,
     startedAt: new Date().toISOString(),
     status: 'running',
     steps: [],
@@ -123,7 +126,7 @@ async function runCase(testCase, ctx, out) {
   const terminal = [
     `${'='.repeat(100)}`,
     `CASE ${testCase.id} :: ${testCase.title}`,
-    `scan tool ${ctx.version.spec}`,
+    `scan tool ${ctx.version.spec}${ctx.central ? ` | Ballerina Central: ${ctx.central}` : ''}`,
     testCase.description ? `\n${testCase.description}` : '',
     `${'='.repeat(100)}`,
   ];
@@ -264,6 +267,12 @@ async function main() {
     skipTags: list(args['skip-tags'] || config.SKIP_TAGS),
   });
 
+  const central = String(args.central ?? config.CENTRAL ?? '').trim().toLowerCase();
+  if (central && !CENTRALS.includes(central)) {
+    console.error(`Unknown Central "${central}". Use one of: ${CENTRALS.join(', ')}.`);
+    process.exit(2);
+  }
+
   const jobs = Math.max(1, Number.parseInt(args.jobs || config.JOBS || '1', 10) || 1);
   // Cases with these tags share global state (Ballerina Central cache, the SonarQube server), so they never overlap.
   const serialTags = list(args['serial-tags'] ?? (config.SERIAL_TAGS || 'network,sonarqube'));
@@ -289,7 +298,8 @@ async function main() {
   fs.mkdirSync(runDir, { recursive: true });
   const originalActive = readActiveToolEntry();
 
-  const balVersion = await runCommand(`${bal} version`, { env });
+  const runEnv = withCentral(env, central);
+  const balVersion = await runCommand(`${bal} version`, { env: runEnv });
   const run = {
     id: runId,
     label: args.label || '',
@@ -298,6 +308,7 @@ async function main() {
     host: { platform: process.platform, node: process.version, hostname: os.hostname() },
     balVersion: stripAnsi(balVersion.combined).trim(),
     originalActiveScanVersion: originalActive,
+    central: central || null,
     config: redact(config),
     versions: versions.map((v) => ({ ...v, status: 'pending', cases: [], running: [] })),
     caseCount: cases.length,
@@ -306,7 +317,7 @@ async function main() {
   };
   const saveRun = () => writeJson(path.join(runDir, 'run.json'), run);
   saveRun();
-  console.log(`Run ${runId}: ${cases.length} case(s) x ${versions.length} version(s), ${jobs} parallel job(s), ${serialCount} serial case(s)\nResults: ${runDir}\n`);
+  console.log(`Run ${runId}: ${cases.length} case(s) x ${versions.length} version(s), ${jobs} parallel job(s), ${serialCount} serial case(s)${central ? `, Central: ${central}` : ''}\nResults: ${runDir}\n`);
 
   const terminalLog = [`bal scan playground run ${runId}`, run.balVersion, ''];
   for (const versionEntry of run.versions) {
@@ -314,8 +325,12 @@ async function main() {
     const versionDir = path.join(runDir, slug(version.spec));
     fs.mkdirSync(versionDir, { recursive: true });
     versionEntry.dir = slug(version.spec);
-    console.log(`>>> switching scan tool to ${version.spec}`);
-    const switched = await switchScanVersion(bal, version, env);
+    // A @dev/@stage/@central suffix on the version wins over the run-wide Central for its tool pull and cases.
+    const versionCentral = version.central || central || null;
+    const versionEnv = withCentral(runEnv, version.central);
+    versionEntry.central = versionCentral;
+    console.log(`>>> switching scan tool to ${version.spec}${versionCentral ? ` (Central: ${versionCentral})` : ''}`);
+    const switched = await switchScanVersion(bal, version, runEnv);
     fs.writeFileSync(path.join(versionDir, 'tool-switch.txt'), switched.log
       .map((r) => `> ${r.command}\n${stripAnsi(r.combined).trim()}\n[exit ${r.exitCode}]`).join('\n\n'));
     versionEntry.activeAfterSwitch = switched.active;
@@ -329,10 +344,10 @@ async function main() {
     versionEntry.status = 'running';
     versionEntry.toolBefore = activeToolFingerprint();
     saveRun();
-    terminalLog.push(`${'#'.repeat(100)}`, `##### scan tool ${version.spec}`, `${'#'.repeat(100)}`);
+    terminalLog.push(`${'#'.repeat(100)}`, `##### scan tool ${version.spec}${versionCentral ? ` (Central: ${versionCentral})` : ''}`, `${'#'.repeat(100)}`);
 
     const ctx = {
-      config, env, bal, version, versionDir, runDir,
+      config, env: versionEnv, central: versionCentral, bal, version, versionDir, runDir,
       timeoutMs: Number(config.STEP_TIMEOUT_SECONDS || 600) * 1000,
       secrets: secretValues(config),
     };
