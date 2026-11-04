@@ -1,0 +1,95 @@
+{
+  "title": "ballerina:13 and ballerina:14 skip values that cannot be secrets (#147)",
+  "description": "Upstream core-rules fixtures from #147: booleans, nil defaults, records of configurables, objects, placeholders and other values that cannot hold a secret are not reported, while real secrets in the same slots still are. Each step keeps only ballerina:13 and ballerina:14, as the upstream tests do, so the printed count can be compared with the upstream one in the note. Not available before 0.13.0.",
+  "tags": [
+    "single-file",
+    "core-rules",
+    "secrets"
+  ],
+  "upstream": [
+    "Rule013Test",
+    "Rule014Test",
+    "SecretValueChecksTest",
+    "PR #147",
+    "test-resources/core-rules/rule013_placeholder_secret_values.bal",
+    "test-resources/core-rules/rule013_secret_value_types.bal",
+    "test-resources/core-rules/rule013_value_checks_branches.bal",
+    "test-resources/core-rules/rule013_value_checks_collections.bal",
+    "test-resources/core-rules/rule013_value_checks_placeholders.bal",
+    "test-resources/core-rules/rule013_value_checks_review_fixes.bal",
+    "test-resources/core-rules/rule013_value_checks_review_round_two.bal",
+    "test-resources/core-rules/rule013_value_checks_slots.bal",
+    "test-resources/core-rules/rule013_value_checks_types.bal",
+    "test-resources/core-rules/rule013_value_checks_urls.bal",
+    "test-resources/core-rules/rule014_non_secret_value_types.bal",
+    "test-resources/core-rules/rule014_value_checks_configurables.bal",
+    "test-resources/core-rules/rule014_value_checks_non_secret_types.bal"
+  ],
+  "steps": [
+    {
+      "name": "rule013_placeholder_secret_values",
+      "run": "bal scan rule013_placeholder_secret_values.bal --include-rules=\"ballerina:13, ballerina:14\"",
+      "note": "Upstream expects 1 ballerina:13/ballerina:14 issue."
+    },
+    {
+      "name": "rule013_secret_value_types",
+      "run": "bal scan rule013_secret_value_types.bal --include-rules=\"ballerina:13, ballerina:14\"",
+      "note": "Upstream expects 13 ballerina:13/ballerina:14 issues."
+    },
+    {
+      "name": "rule013_value_checks_branches",
+      "run": "bal scan rule013_value_checks_branches.bal --include-rules=\"ballerina:13, ballerina:14\"",
+      "note": "Upstream expects 1 ballerina:13/ballerina:14 issue."
+    },
+    {
+      "name": "rule013_value_checks_collections",
+      "run": "bal scan rule013_value_checks_collections.bal --include-rules=\"ballerina:13, ballerina:14\"",
+      "note": "Upstream expects 14 ballerina:13/ballerina:14 issues."
+    },
+    {
+      "name": "rule013_value_checks_placeholders",
+      "run": "bal scan rule013_value_checks_placeholders.bal --include-rules=\"ballerina:13, ballerina:14\"",
+      "note": "Upstream expects 5 ballerina:13/ballerina:14 issues."
+    },
+    {
+      "name": "rule013_value_checks_review_fixes",
+      "run": "bal scan rule013_value_checks_review_fixes.bal --include-rules=\"ballerina:13, ballerina:14\"",
+      "note": "Upstream expects 6 ballerina:13/ballerina:14 issues."
+    },
+    {
+      "name": "rule013_value_checks_review_round_two",
+      "run": "bal scan rule013_value_checks_review_round_two.bal --include-rules=\"ballerina:13, ballerina:14\"",
+      "note": "Upstream expects 5 ballerina:13/ballerina:14 issues."
+    },
+    {
+      "name": "rule013_value_checks_slots",
+      "run": "bal scan rule013_value_checks_slots.bal --include-rules=\"ballerina:13, ballerina:14\"",
+      "note": "Upstream expects 15 ballerina:13/ballerina:14 issues."
+    },
+    {
+      "name": "rule013_value_checks_types",
+      "run": "bal scan rule013_value_checks_types.bal --include-rules=\"ballerina:13, ballerina:14\"",
+      "note": "Upstream expects 13 ballerina:13/ballerina:14 issues."
+    },
+    {
+      "name": "rule013_value_checks_urls",
+      "run": "bal scan rule013_value_checks_urls.bal --include-rules=\"ballerina:13, ballerina:14\"",
+      "note": "Upstream expects 7 ballerina:13/ballerina:14 issues."
+    },
+    {
+      "name": "rule014_non_secret_value_types",
+      "run": "bal scan rule014_non_secret_value_types.bal --include-rules=\"ballerina:13, ballerina:14\"",
+      "note": "Upstream expects no ballerina:13 or ballerina:14 issue."
+    },
+    {
+      "name": "rule014_value_checks_configurables",
+      "run": "bal scan rule014_value_checks_configurables.bal --include-rules=\"ballerina:13, ballerina:14\"",
+      "note": "Upstream expects no ballerina:13 or ballerina:14 issue."
+    },
+    {
+      "name": "rule014_value_checks_non_secret_types",
+      "run": "bal scan rule014_value_checks_non_secret_types.bal --include-rules=\"ballerina:13, ballerina:14\"",
+      "note": "Upstream expects no ballerina:13 or ballerina:14 issue."
+    }
+  ]
+}

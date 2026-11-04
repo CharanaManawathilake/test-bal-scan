@@ -1,0 +1,52 @@
+{
+  "title": "ballerina:13 and ballerina:14 match secret names by word (#148)",
+  "description": "Upstream core-rules fixtures from #148: names are split into words, so author and tokenizer are not secret names while dbCredential and privateKey are. Each step keeps only ballerina:13 and ballerina:14, so the printed count can be compared with the upstream one in the note. Not available before 0.13.0.",
+  "tags": [
+    "single-file",
+    "core-rules",
+    "secrets"
+  ],
+  "upstream": [
+    "Rule013Test",
+    "SecretNameCheckerTest",
+    "PR #148",
+    "test-resources/core-rules/rule013_hardcoded_secret_names.bal",
+    "test-resources/core-rules/rule013_name_checks_arguments.bal",
+    "test-resources/core-rules/rule013_name_checks_fields.bal",
+    "test-resources/core-rules/rule013_name_checks_map_keys.bal",
+    "test-resources/core-rules/rule013_name_checks_variables.bal",
+    "test-resources/core-rules/rule013_non_secret_names.bal"
+  ],
+  "steps": [
+    {
+      "name": "rule013_hardcoded_secret_names",
+      "run": "bal scan rule013_hardcoded_secret_names.bal --include-rules=\"ballerina:13, ballerina:14\"",
+      "note": "Upstream expects 14 ballerina:13/ballerina:14 issues."
+    },
+    {
+      "name": "rule013_name_checks_arguments",
+      "run": "bal scan rule013_name_checks_arguments.bal --include-rules=\"ballerina:13, ballerina:14\"",
+      "note": "Upstream expects 6 ballerina:13/ballerina:14 issues."
+    },
+    {
+      "name": "rule013_name_checks_fields",
+      "run": "bal scan rule013_name_checks_fields.bal --include-rules=\"ballerina:13, ballerina:14\"",
+      "note": "Upstream expects 9 ballerina:13/ballerina:14 issues."
+    },
+    {
+      "name": "rule013_name_checks_map_keys",
+      "run": "bal scan rule013_name_checks_map_keys.bal --include-rules=\"ballerina:13, ballerina:14\"",
+      "note": "Upstream expects 8 ballerina:13/ballerina:14 issues."
+    },
+    {
+      "name": "rule013_name_checks_variables",
+      "run": "bal scan rule013_name_checks_variables.bal --include-rules=\"ballerina:13, ballerina:14\"",
+      "note": "Upstream expects 9 ballerina:13/ballerina:14 issues."
+    },
+    {
+      "name": "rule013_non_secret_names",
+      "run": "bal scan rule013_non_secret_names.bal --include-rules=\"ballerina:13, ballerina:14\"",
+      "note": "Upstream expects no ballerina:13 or ballerina:14 issue."
+    }
+  ]
+}

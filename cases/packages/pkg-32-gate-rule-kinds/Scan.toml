@@ -1,0 +1,4 @@
+# The analyzer's rules have a kind but no severity: 1 is a CODE_SMELL, 2 a BUG and 3 a VULNERABILITY
+[[analyzer]]
+org = "exampleOrg"
+name = "example_module_static_code_analyzer"

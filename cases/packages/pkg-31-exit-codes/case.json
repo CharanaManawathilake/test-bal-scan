@@ -1,0 +1,26 @@
+{
+  "title": "Exit codes: 0, 1, 2 and 3 in one place",
+  "description": "pkg has one ballerina:1 issue and a file named blocked; not-a-project has no Ballerina.toml; invalid-scan-toml has one error in each of [rule], [gate], [analysis] and [[analyzer]]. Each note gives the expected exit code. Errors print 'bal scan: error: <message>', followed by '<file>:<line>:<col>: error: <message>' lines for Scan.toml; warnings never change the exit code. On Windows, bal.bat exits 0 whatever the scan returns, so check the printed error there. Not available before 0.13.0. Exit code 130 (Ctrl+C) has to be checked by hand.",
+  "tags": ["package", "errors", "exit-codes", "gate"],
+  "upstream": ["ScanCmdTest", "GateTest"],
+  "setup": [
+    { "name": "Lock dependencies (pkg)", "run": "bal build", "cwd": "pkg" },
+    { "name": "Lock dependencies (invalid-scan-toml)", "run": "bal build", "cwd": "invalid-scan-toml" }
+  ],
+  "steps": [
+    { "name": "Success", "run": "bal scan", "cwd": "pkg", "note": "0: issues alone never fail the scan." },
+    { "name": "Tripped gate", "run": "bal scan --fail-on-count=1", "cwd": "pkg", "note": "1, after the report is written." },
+    { "name": "Report write failure", "run": "bal scan --target-dir=blocked", "cwd": "pkg", "note": "1: blocked is a file, so the report cannot be written." },
+    { "name": "Invalid Scan.toml", "run": "bal scan", "cwd": "invalid-scan-toml", "note": "1: all four errors at once, each with its line and column; nothing is scanned." },
+    { "name": "--fail-on-severity=FOO", "run": "bal scan --fail-on-severity=FOO", "cwd": "pkg", "note": "2, with the accepted values." },
+    { "name": "--fail-on-count=abc", "run": "bal scan --fail-on-count=abc", "cwd": "pkg", "note": "2." },
+    { "name": "--fail-on-count=-1", "run": "bal scan --fail-on-count=-1", "cwd": "pkg", "note": "2." },
+    { "name": "--exclude-tests=maybe", "run": "bal scan --exclude-tests=maybe", "cwd": "pkg", "note": "2." },
+    { "name": "Include and exclude together", "run": "bal scan --include-rules=ballerina:1 --exclude-rules=ballerina:2", "cwd": "pkg", "note": "2, before scanning." },
+    { "name": "Unknown rule ID", "run": "bal scan --include-rules=ballerina:999", "cwd": "pkg", "note": "2." },
+    { "name": "Unknown option", "run": "bal scan --no-such-option", "cwd": "pkg", "note": "2." },
+    { "name": "Not a Ballerina project", "run": "bal scan not-a-project", "cwd": ".", "note": "3." },
+    { "name": "Path that does not exist", "run": "bal scan does-not-exist", "cwd": ".", "note": "3." },
+    { "name": ".bal file inside a package", "run": "bal scan main.bal", "cwd": "pkg", "note": "3." }
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "title": "An analyzer reads ScannerContext.isExcludeTests()",
+  "description": "The exampleOrg analyzer prints '[example analyzer] ScannerContext.isExcludeTests() = <value>' when it analyzes probe.bal, and reports rule 1 once per document. With the tests excluded, the rule 1 issue in tests/main_test.bal is dropped. On scan tools without the method, the line says 'not available'. Needs plugins built after the analyzer learned the probe (npm run setup:plugins). Not available before 0.13.0.",
+  "tags": ["package", "tests", "analyzer"],
+  "upstream": ["ExcludeTestsTest"],
+  "requires": { "plugins": true },
+  "steps": [
+    { "name": "Tests scanned", "run": "bal scan", "note": "Prints false; 3 rule 1 issues (main.bal, probe.bal, tests/main_test.bal)." },
+    { "name": "--exclude-tests", "run": "bal scan --exclude-tests", "note": "Prints true; 2 issues." },
+    { "name": "--exclude-tests=false", "run": "bal scan --exclude-tests=false", "note": "Prints false." }
+  ]
+}

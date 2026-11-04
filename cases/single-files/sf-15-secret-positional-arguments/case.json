@@ -1,0 +1,83 @@
+{
+  "title": "ballerina:13 and ballerina:14 check positional arguments to secret-named parameters (#145)",
+  "description": "Upstream core-rules fixtures from #145: positional arguments are matched to the parameter names of local and library functions, remote methods, resource access actions and new expressions; lang library calls and values that cannot be secrets are not reported. Each step keeps only ballerina:13 and ballerina:14, so the printed count can be compared with the upstream one in the note. Not available before 0.13.0.",
+  "tags": [
+    "single-file",
+    "core-rules",
+    "secrets"
+  ],
+  "upstream": [
+    "Rule013Test",
+    "Rule014Test",
+    "SecretPositionalArgumentTest",
+    "PR #145",
+    "test-resources/core-rules/rule013_hardcoded_secret_function_argument.bal",
+    "test-resources/core-rules/rule013_hardcoded_secret_positional_argument.bal",
+    "test-resources/core-rules/rule013_positional_call_forms.bal",
+    "test-resources/core-rules/rule013_positional_function_pointers.bal",
+    "test-resources/core-rules/rule013_positional_lang_lib_calls.bal",
+    "test-resources/core-rules/rule013_positional_library_calls.bal",
+    "test-resources/core-rules/rule013_positional_non_secret_values.bal",
+    "test-resources/core-rules/rule013_positional_parameter_kinds.bal",
+    "test-resources/core-rules/rule013_positional_review_cases.bal",
+    "test-resources/core-rules/rule014_non_config_secret_as_function_argument.bal",
+    "test-resources/core-rules/rule014_positional_call_forms.bal"
+  ],
+  "steps": [
+    {
+      "name": "rule013_hardcoded_secret_function_argument",
+      "run": "bal scan rule013_hardcoded_secret_function_argument.bal --include-rules=\"ballerina:13, ballerina:14\"",
+      "note": "Upstream expects 8 ballerina:13/ballerina:14 issues."
+    },
+    {
+      "name": "rule013_hardcoded_secret_positional_argument",
+      "run": "bal scan rule013_hardcoded_secret_positional_argument.bal --include-rules=\"ballerina:13, ballerina:14\"",
+      "note": "Upstream expects 7 ballerina:13/ballerina:14 issues."
+    },
+    {
+      "name": "rule013_positional_call_forms",
+      "run": "bal scan rule013_positional_call_forms.bal --include-rules=\"ballerina:13, ballerina:14\"",
+      "note": "Upstream expects 16 ballerina:13/ballerina:14 issues."
+    },
+    {
+      "name": "rule013_positional_function_pointers",
+      "run": "bal scan rule013_positional_function_pointers.bal --include-rules=\"ballerina:13, ballerina:14\"",
+      "note": "Upstream expects 4 ballerina:13/ballerina:14 issues."
+    },
+    {
+      "name": "rule013_positional_lang_lib_calls",
+      "run": "bal scan rule013_positional_lang_lib_calls.bal --include-rules=\"ballerina:13, ballerina:14\"",
+      "note": "Upstream expects no ballerina:13 or ballerina:14 issue."
+    },
+    {
+      "name": "rule013_positional_library_calls",
+      "run": "bal scan rule013_positional_library_calls.bal --include-rules=\"ballerina:13, ballerina:14\"",
+      "note": "Upstream expects 4 ballerina:13/ballerina:14 issues."
+    },
+    {
+      "name": "rule013_positional_non_secret_values",
+      "run": "bal scan rule013_positional_non_secret_values.bal --include-rules=\"ballerina:13, ballerina:14\"",
+      "note": "Upstream expects no ballerina:13 or ballerina:14 issue."
+    },
+    {
+      "name": "rule013_positional_parameter_kinds",
+      "run": "bal scan rule013_positional_parameter_kinds.bal --include-rules=\"ballerina:13, ballerina:14\"",
+      "note": "Upstream expects 15 ballerina:13/ballerina:14 issues."
+    },
+    {
+      "name": "rule013_positional_review_cases",
+      "run": "bal scan rule013_positional_review_cases.bal --include-rules=\"ballerina:13, ballerina:14\"",
+      "note": "Upstream expects 9 ballerina:13/ballerina:14 issues."
+    },
+    {
+      "name": "rule014_non_config_secret_as_function_argument",
+      "run": "bal scan rule014_non_config_secret_as_function_argument.bal --include-rules=\"ballerina:13, ballerina:14\"",
+      "note": "Upstream expects 8 ballerina:13/ballerina:14 issues."
+    },
+    {
+      "name": "rule014_positional_call_forms",
+      "run": "bal scan rule014_positional_call_forms.bal --include-rules=\"ballerina:13, ballerina:14\"",
+      "note": "Upstream expects 16 ballerina:13/ballerina:14 issues."
+    }
+  ]
+}

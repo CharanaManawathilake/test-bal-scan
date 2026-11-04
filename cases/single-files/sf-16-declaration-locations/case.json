@@ -1,0 +1,32 @@
+{
+  "title": "ballerina:2 and ballerina:11 locations, and external function parameters",
+  "description": "Upstream core-rules fixtures. ballerina:2 and ballerina:11 point at the declaration itself, without its doc comment or annotations (#117, #118), in the console, JSON and SARIF output. ballerina:2 is not reported for the parameter of the external function externHasKey (#120). Upstream and the JSON output use 0-based line numbers; the console notes and SARIF use 1-based ones. The ballerina:11 file is class A5 of the upstream fixture, since the rest of that file does not compile.",
+  "tags": ["single-file", "core-rules", "locations"],
+  "upstream": [
+    "Rule002Test#testUnusedFunctionParameter",
+    "Rule011Test#testUnusedPrivateFieldsAnalyzer",
+    "test-resources/core-rules/rule002_unused_func_parameters.bal",
+    "test-resources/core-rules/rule011_unused_class_fields.bal (class A5)"
+  ],
+  "steps": [
+    {
+      "name": "ballerina:2",
+      "run": "bal scan rule002_unused_func_parameters.bal --include-rules=ballerina:2",
+      "note": "Upstream expects 20 issues and none on line 95 (externHasKey). The three on test15 (line 105) start at the parameter type, after @Info {...}."
+    },
+    {
+      "name": "ballerina:2 (SARIF)",
+      "run": "bal scan rule002_unused_func_parameters.bal --include-rules=ballerina:2 --format=sarif",
+      "note": "The startColumn of the test15 results is after the annotation."
+    },
+    {
+      "name": "ballerina:11",
+      "run": "bal scan rule011_documented_fields.bal --include-rules=ballerina:11",
+      "note": "3 issues, on lines 11, 13 and 16: the field lines, not the doc comment or @Info lines."
+    },
+    {
+      "name": "ballerina:11 (SARIF)",
+      "run": "bal scan rule011_documented_fields.bal --include-rules=ballerina:11 --format=sarif"
+    }
+  ]
+}

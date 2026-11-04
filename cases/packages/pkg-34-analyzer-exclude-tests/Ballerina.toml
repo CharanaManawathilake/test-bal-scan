@@ -1,0 +1,4 @@
+[package]
+org = "playground"
+name = "analyzer_exclude_tests"
+version = "0.1.0"

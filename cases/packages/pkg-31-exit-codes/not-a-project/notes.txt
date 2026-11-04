@@ -1,0 +1,1 @@
+This folder has no Ballerina.toml and no .bal file, so it is not a Ballerina project.

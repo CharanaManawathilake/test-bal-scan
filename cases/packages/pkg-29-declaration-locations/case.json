@@ -1,0 +1,26 @@
+{
+  "title": "ballerina:2 and ballerina:11 locations in the JSON, SARIF and HTML reports",
+  "description": "A documented and annotated parameter and two documented or annotated private fields. Each issue starts at the declaration itself, not at its doc comment or annotation (#117, #118), in every report. The parameter of the external function hex is not reported (#120).",
+  "tags": ["package", "core-rules", "locations", "report"],
+  "upstream": [
+    "Rule002Test#testUnusedFunctionParameter",
+    "Rule011Test#testUnusedPrivateFieldsAnalyzer"
+  ],
+  "steps": [
+    {
+      "name": "Scan",
+      "run": "bal scan --include-rules=\"ballerina:2, ballerina:11\"",
+      "note": "3 issues: main.bal lines 15 (int second, after @Info), 27 and 29, written 0-based (14, 26, 28) in the JSON. Nothing on line 20 (hex)."
+    },
+    {
+      "name": "SARIF",
+      "run": "bal scan --include-rules=\"ballerina:2, ballerina:11\" --format=sarif",
+      "note": "The regions start on lines 15, 27 and 29."
+    },
+    {
+      "name": "HTML report",
+      "run": "bal scan --include-rules=\"ballerina:2, ballerina:11\" --scan-report",
+      "note": "Open scan_report.html: each highlight starts at the declaration, not at the doc comment or annotation."
+    }
+  ]
+}

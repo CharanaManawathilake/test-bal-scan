@@ -1,0 +1,4 @@
+[package]
+org = "playground"
+name = "declaration_locations"
+version = "0.1.0"

@@ -1,0 +1,10 @@
+{
+  "title": "Negative sample: no core rule (ballerina:1 to ballerina:14) is reported",
+  "description": "no_issues.bal mirrors core-rules/core_rules.bal with every construct fixed: check instead of checkpanic, every parameter and private field used, isolated public functions, classes, methods and object types, conditions that depend on the input, no self assignment, a non-empty range, and a secret read from a configurable. Every step should print no issues.",
+  "tags": ["single-file", "core-rules"],
+  "upstream": ["CoreRuleTest", "test-resources/core-rules"],
+  "steps": [
+    { "name": "Scan", "run": "bal scan no_issues.bal", "note": "No issues." },
+    { "name": "SARIF", "run": "bal scan no_issues.bal --format=sarif", "note": "The results array is empty." }
+  ]
+}

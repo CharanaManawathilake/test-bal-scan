@@ -1,0 +1,13 @@
+{
+  "title": "Gate: suppressed issues are not counted",
+  "description": "main.bal has a suppressed ballerina:13 issue (HIGH) and two ballerina:1 issues. The gate counts only the issues left after rule selection and suppressions; --ignore-suppressions brings the suppressed one back into the count. Not available before 0.13.0.",
+  "tags": ["package", "gate", "suppression"],
+  "upstream": ["GateTest", "SuppressionTest"],
+  "steps": [
+    { "name": "--fail-on-severity=HIGH", "run": "bal scan --fail-on-severity=HIGH", "note": "Passes: the only HIGH issue is suppressed. It is still in the report, marked as suppressed." },
+    { "name": "--fail-on-severity=HIGH --ignore-suppressions", "run": "bal scan --fail-on-severity=HIGH --ignore-suppressions", "note": "Fails." },
+    { "name": "--fail-on-count=3", "run": "bal scan --fail-on-count=3", "note": "Passes: 2 issues are left." },
+    { "name": "--fail-on-count=3 --ignore-suppressions", "run": "bal scan --fail-on-count=3 --ignore-suppressions", "note": "Fails: 3 issues." },
+    { "name": "--fail-on-count=2 --exclude-rules=ballerina:1", "run": "bal scan --fail-on-count=2 --exclude-rules=ballerina:1 --ignore-suppressions", "note": "Passes: rule selection leaves 1 issue." }
+  ]
+}

@@ -40,6 +40,11 @@
       "name": "Lock dependencies (local-jar-missing)",
       "run": "bal build",
       "cwd": "local-jar-missing"
+    },
+    {
+      "name": "Lock dependencies (platform-not-in-jar)",
+      "run": "bal build",
+      "cwd": "platform-not-in-jar"
     }
   ],
   "steps": [
@@ -79,6 +84,18 @@
       "name": "Local JAR that does not exist",
       "run": "bal scan",
       "cwd": "local-jar-missing"
+    },
+    {
+      "name": "Plugin JAR without the named platform, not selected",
+      "run": "bal scan",
+      "cwd": "platform-not-in-jar",
+      "note": "The JAR is loaded only for a selected platform, so the scan succeeds."
+    },
+    {
+      "name": "Plugin JAR without the named platform, selected",
+      "run": "bal scan --platforms=notInJar",
+      "cwd": "platform-not-in-jar",
+      "note": "Error, exit 1: the recorder JAR provides recorder and recorder2, not notInJar."
     }
   ]
 }

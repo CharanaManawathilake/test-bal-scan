@@ -1,0 +1,12 @@
+# One error in each table, all reported together with their positions
+[rule]
+include = "ballerina:1"
+
+[gate]
+failOnSeverity = "SEVERE"
+
+[analysis]
+excludeTests = "yes"
+
+[[analyzer]]
+org = "exampleOrg"

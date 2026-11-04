@@ -29,6 +29,11 @@
       "name": "Lock dependencies (invalid)",
       "run": "bal build",
       "cwd": "invalid"
+    },
+    {
+      "name": "Lock dependencies (test-compile-error)",
+      "run": "bal build --skip-tests",
+      "cwd": "test-compile-error"
     }
   ],
   "steps": [
@@ -76,6 +81,18 @@
       "run": "bal scan",
       "cwd": "invalid",
       "note": "Scan.toml has 2 errors; nothing is scanned."
+    },
+    {
+      "name": "Compilation error in a test",
+      "run": "bal scan",
+      "cwd": "test-compile-error",
+      "note": "tests/broken_test.bal does not compile: the scan stops with the compilation error, exit 1."
+    },
+    {
+      "name": "Compilation error in a test, --exclude-tests",
+      "run": "bal scan --exclude-tests",
+      "cwd": "test-compile-error",
+      "note": "Still fails with the compilation error: leaving the tests out of the analysis does not skip compiling them."
     }
   ]
 }

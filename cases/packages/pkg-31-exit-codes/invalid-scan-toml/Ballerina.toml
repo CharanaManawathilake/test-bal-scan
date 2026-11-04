@@ -1,0 +1,4 @@
+[package]
+org = "playground"
+name = "exit_codes_invalid_scan_toml"
+version = "0.1.0"

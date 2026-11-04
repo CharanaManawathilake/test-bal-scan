@@ -15,6 +15,8 @@ import io.ballerina.scan.ScannerContext;
 
 /**
  * Mirrors the upstream test analyzers: reports rule 1 once for every document of the package.
+ * Documents named bug*.bal and vulnerability*.bal also report rule 2 and rule 3, and probe.bal prints
+ * ScannerContext.isExcludeTests().
  */
 public class StaticCodeAnalyzerPlugin extends CompilerPlugin {
     @Override
@@ -34,15 +36,17 @@ public class StaticCodeAnalyzerPlugin extends CompilerPlugin {
 
         @Override
         public void init(CodeAnalysisContext codeAnalysisContext) {
-            codeAnalysisContext.addSyntaxNodeAnalysisTask(new Task(scannerContext.getReporter()), SyntaxKind.MODULE_PART);
+            codeAnalysisContext.addSyntaxNodeAnalysisTask(new Task(scannerContext), SyntaxKind.MODULE_PART);
         }
     }
 
     private static final class Task implements AnalysisTask<SyntaxNodeAnalysisContext> {
+        private final ScannerContext scannerContext;
         private final Reporter reporter;
 
-        Task(Reporter reporter) {
-            this.reporter = reporter;
+        Task(ScannerContext scannerContext) {
+            this.scannerContext = scannerContext;
+            this.reporter = scannerContext.getReporter();
         }
 
         @Override
@@ -51,6 +55,24 @@ public class StaticCodeAnalyzerPlugin extends CompilerPlugin {
             Document document = module.document(context.documentId());
             ModulePartNode modulePartNode = (ModulePartNode) context.node();
             reporter.reportIssue(document, modulePartNode.location(), 1);
+            // Rules 2 (BUG) and 3 (VULNERABILITY) have no severity; only these documents report them.
+            String name = document.name();
+            if (name.startsWith("bug")) {
+                reporter.reportIssue(document, modulePartNode.location(), 2);
+            } else if (name.startsWith("vulnerability")) {
+                reporter.reportIssue(document, modulePartNode.location(), 3);
+            } else if (name.equals("probe.bal")) {
+                System.out.println("[example analyzer] ScannerContext.isExcludeTests() = " + excludeTests());
+            }
+        }
+
+        // Called reflectively so the plugin still compiles against scan-command JARs older than 0.13.0.
+        private String excludeTests() {
+            try {
+                return String.valueOf(ScannerContext.class.getMethod("isExcludeTests").invoke(scannerContext));
+            } catch (ReflectiveOperationException e) {
+                return "not available (" + e.getClass().getSimpleName() + ")";
+            }
         }
     }
 }

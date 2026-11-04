@@ -1,0 +1,20 @@
+{
+  "title": "Tracing secret values across files and modules (#150)",
+  "description": "The upstream bal-project-with-secret-tracing project. A module variable that is assigned somewhere else in the module (sharedValue, in rotation.bal) is not a fixed value. A value that stays fixed is reported where it is passed as a secret, even from another file, and a module constant is a hard-coded secret. Not available before 0.13.0.",
+  "tags": ["package", "core-rules", "secrets"],
+  "upstream": [
+    "SecretValueTracingTest#testVariablesAcrossFilesOfOneModule",
+    "test-resources/bal-project-with-secret-tracing"
+  ],
+  "steps": [
+    {
+      "name": "Secret rules only",
+      "run": "bal scan --include-rules=\"ballerina:13, ballerina:14\"",
+      "note": "Upstream expects 4: main.bal ballerina:14 on lines 25 (stableValue) and 26 (rotationValue) and ballerina:13 on line 29 (vault:SHARED_CONSTANT); rotation.bal ballerina:14 on line 24. Nothing for sharedValue, which rotate() reassigns."
+    },
+    {
+      "name": "All rules",
+      "run": "bal scan"
+    }
+  ]
+}

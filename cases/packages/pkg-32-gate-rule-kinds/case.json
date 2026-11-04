@@ -1,0 +1,20 @@
+{
+  "title": "Gate: a rule with no severity is counted by its kind",
+  "description": "The exampleOrg analyzer's rules have a kind but no severity. It reports rule 1 (CODE_SMELL) in each of the 3 files, rule 2 (BUG) in bug_report.bal and rule 3 (VULNERABILITY) in vulnerability_report.bal. The gate counts a BUG as HIGH, a VULNERABILITY as MEDIUM and a CODE_SMELL as LOW. No core rule applies to these files. Needs plugins built after the analyzer learned rules 2 and 3 (npm run setup:plugins). Not available before 0.13.0.",
+  "tags": ["package", "gate", "analyzer"],
+  "upstream": ["GateTest"],
+  "requires": { "plugins": true },
+  "steps": [
+    { "name": "No gate", "run": "bal scan", "note": "5 issues: 3 of rule 1, 1 of rule 2, 1 of rule 3; exit 0." },
+    { "name": "--fail-on-severity=HIGH", "run": "bal scan --fail-on-severity=HIGH", "note": "Fails: the BUG counts as HIGH." },
+    {
+      "name": "--fail-on-severity=HIGH without the BUG",
+      "run": "bal scan --fail-on-severity=HIGH --exclude-rules=exampleOrg/example_module_static_code_analyzer:2",
+      "note": "Passes: the VULNERABILITY counts as MEDIUM, below HIGH."
+    },
+    { "name": "--fail-on-severity=MEDIUM --fail-on-count=2", "run": "bal scan --fail-on-severity=MEDIUM --fail-on-count=2", "note": "Fails: the BUG and the VULNERABILITY make 2." },
+    { "name": "--fail-on-severity=MEDIUM --fail-on-count=3", "run": "bal scan --fail-on-severity=MEDIUM --fail-on-count=3", "note": "Passes: the CODE_SMELL issues count as LOW." },
+    { "name": "--fail-on-severity=LOW --fail-on-count=5", "run": "bal scan --fail-on-severity=LOW --fail-on-count=5", "note": "Fails: all 5 issues count." },
+    { "name": "SARIF", "run": "bal scan --format=sarif", "note": "Shows the level written for each analyzer rule." }
+  ]
+}

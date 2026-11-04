@@ -1,0 +1,107 @@
+{
+  "title": "ballerina:13 and ballerina:14 trace values to their origin (#150)",
+  "description": "Upstream core-rules fixtures from #150: a value built from configurables or computed at run time is not a fixed secret, a fixed value reached through variables is reported where it is used, and a chain is reported once. Each step keeps only ballerina:13 and ballerina:14, so the printed count can be compared with the upstream one in the note. Not available before 0.13.0.",
+  "tags": [
+    "single-file",
+    "core-rules",
+    "secrets"
+  ],
+  "upstream": [
+    "Rule013Test",
+    "Rule014Test",
+    "SecretValueTracingTest",
+    "PR #150",
+    "test-resources/core-rules/rule013_csrf_token_sample.bal",
+    "test-resources/core-rules/rule013_traced_hardcoded_secrets.bal",
+    "test-resources/core-rules/rule013_tracing_constants_and_parts.bal",
+    "test-resources/core-rules/rule013_tracing_expressions.bal",
+    "test-resources/core-rules/rule014_non_config_variable_assignment_to_secret.bal",
+    "test-resources/core-rules/rule014_traced_edge_cases.bal",
+    "test-resources/core-rules/rule014_traced_fixed_secrets.bal",
+    "test-resources/core-rules/rule014_tracing_conversions.bal",
+    "test-resources/core-rules/rule014_tracing_fields.bal",
+    "test-resources/core-rules/rule014_tracing_review_fixes.bal",
+    "test-resources/core-rules/rule014_tracing_review_round_three.bal",
+    "test-resources/core-rules/rule014_tracing_review_round_two.bal",
+    "test-resources/core-rules/rule014_tracing_scopes.bal",
+    "test-resources/core-rules/rule014_tracing_variables.bal",
+    "test-resources/core-rules/rule014_untraced_secrets.bal"
+  ],
+  "steps": [
+    {
+      "name": "rule013_csrf_token_sample",
+      "run": "bal scan rule013_csrf_token_sample.bal --include-rules=\"ballerina:13, ballerina:14\"",
+      "note": "Upstream expects 1 ballerina:13/ballerina:14 issue."
+    },
+    {
+      "name": "rule013_traced_hardcoded_secrets",
+      "run": "bal scan rule013_traced_hardcoded_secrets.bal --include-rules=\"ballerina:13, ballerina:14\"",
+      "note": "Upstream expects 7 ballerina:13/ballerina:14 issues."
+    },
+    {
+      "name": "rule013_tracing_constants_and_parts",
+      "run": "bal scan rule013_tracing_constants_and_parts.bal --include-rules=\"ballerina:13, ballerina:14\"",
+      "note": "Upstream expects 14 ballerina:13/ballerina:14 issues."
+    },
+    {
+      "name": "rule013_tracing_expressions",
+      "run": "bal scan rule013_tracing_expressions.bal --include-rules=\"ballerina:13, ballerina:14\"",
+      "note": "Upstream expects 21 ballerina:13/ballerina:14 issues."
+    },
+    {
+      "name": "rule014_non_config_variable_assignment_to_secret",
+      "run": "bal scan rule014_non_config_variable_assignment_to_secret.bal --include-rules=\"ballerina:13, ballerina:14\"",
+      "note": "Upstream expects 6 ballerina:13/ballerina:14 issues."
+    },
+    {
+      "name": "rule014_traced_edge_cases",
+      "run": "bal scan rule014_traced_edge_cases.bal --include-rules=\"ballerina:13, ballerina:14\"",
+      "note": "Upstream expects 6 ballerina:13/ballerina:14 issues."
+    },
+    {
+      "name": "rule014_traced_fixed_secrets",
+      "run": "bal scan rule014_traced_fixed_secrets.bal --include-rules=\"ballerina:13, ballerina:14\"",
+      "note": "Upstream expects 6 ballerina:13/ballerina:14 issues."
+    },
+    {
+      "name": "rule014_tracing_conversions",
+      "run": "bal scan rule014_tracing_conversions.bal --include-rules=\"ballerina:13, ballerina:14\"",
+      "note": "Upstream expects 5 ballerina:13/ballerina:14 issues."
+    },
+    {
+      "name": "rule014_tracing_fields",
+      "run": "bal scan rule014_tracing_fields.bal --include-rules=\"ballerina:13, ballerina:14\"",
+      "note": "Upstream expects 14 ballerina:13/ballerina:14 issues."
+    },
+    {
+      "name": "rule014_tracing_review_fixes",
+      "run": "bal scan rule014_tracing_review_fixes.bal --include-rules=\"ballerina:13, ballerina:14\"",
+      "note": "Upstream expects 4 ballerina:13/ballerina:14 issues."
+    },
+    {
+      "name": "rule014_tracing_review_round_three",
+      "run": "bal scan rule014_tracing_review_round_three.bal --include-rules=\"ballerina:13, ballerina:14\"",
+      "note": "Upstream expects 3 ballerina:13/ballerina:14 issues."
+    },
+    {
+      "name": "rule014_tracing_review_round_two",
+      "run": "bal scan rule014_tracing_review_round_two.bal --include-rules=\"ballerina:13, ballerina:14\"",
+      "note": "Upstream expects 11 ballerina:13/ballerina:14 issues."
+    },
+    {
+      "name": "rule014_tracing_scopes",
+      "run": "bal scan rule014_tracing_scopes.bal --include-rules=\"ballerina:13, ballerina:14\"",
+      "note": "Upstream expects 7 ballerina:13/ballerina:14 issues."
+    },
+    {
+      "name": "rule014_tracing_variables",
+      "run": "bal scan rule014_tracing_variables.bal --include-rules=\"ballerina:13, ballerina:14\"",
+      "note": "Upstream expects 10 ballerina:13/ballerina:14 issues."
+    },
+    {
+      "name": "rule014_untraced_secrets",
+      "run": "bal scan rule014_untraced_secrets.bal --include-rules=\"ballerina:13, ballerina:14\"",
+      "note": "Upstream expects no ballerina:13 or ballerina:14 issue."
+    }
+  ]
+}

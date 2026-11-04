@@ -1,0 +1,4 @@
+[package]
+org = "playground"
+name = "exclude_tests_compile_error"
+version = "0.1.0"

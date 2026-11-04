@@ -1,0 +1,4 @@
+[package]
+org = "playground"
+name = "platform_not_in_jar"
+version = "0.1.0"
