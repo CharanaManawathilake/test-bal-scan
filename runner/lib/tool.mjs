@@ -74,7 +74,18 @@ export async function activeScanVersion(bal, env) {
   // Newer bal lists every installed version and marks the active one with "*".
   const row = rows.length > 1 ? rows.find((l) => l.split('|')[2].includes('*')) : rows[0];
   // A local-repository tool shows as "0.13.0-SNAPSHOT [repo = local]", truncated to the column width.
-  return { version: row ? row.split('|')[2].replace('*', '').trim().split(/\s+/)[0] : null, result };
+  const listed = row ? row.split('|')[2].replace('*', '').trim().split(/\s+/)[0] : null;
+  return { version: expandTruncatedVersion(listed), result };
+}
+
+/** `bal tool list` cuts long versions to "0.11.1-SNA..."; recover the full one from bal-tools.toml. */
+function expandTruncatedVersion(listed) {
+  if (!listed?.endsWith('...')) {
+    return listed;
+  }
+  const prefix = listed.slice(0, -3);
+  const matches = scanToolBlocks().filter((b) => b.version?.startsWith(prefix));
+  return (matches.find((b) => b.active) || matches[0])?.version || listed;
 }
 
 const BAL_TOOLS_TOML = path.join(os.homedir(), '.ballerina', '.config', 'bal-tools.toml');

@@ -9,7 +9,12 @@ const state = {
   run: null,
   caseId: null,
   version: null,
-  compareWith: null,
+  compare: null,
+  view: 'side',
+  diffOpts: loadDiffOpts(),
+  diffStreams: {},
+  diffPairs: [],
+  diffRecords: null,
   category: '',
   tag: '',
   search: '',
@@ -29,9 +34,33 @@ async function api(path, opts) {
   return res.json();
 }
 
+function loadDiffOpts() {
+  const defaults = { mode: 'split', hideUnchanged: true, normalize: true };
+  try {
+    return { ...defaults, ...JSON.parse(localStorage.getItem('diffOpts') || '{}') };
+  } catch {
+    return defaults;
+  }
+}
+
+function saveDiffOpts() {
+  try {
+    localStorage.setItem('diffOpts', JSON.stringify(state.diffOpts));
+  } catch {
+    // Storage unavailable; options just won't persist.
+  }
+}
+
 function readHash() {
   const params = new URLSearchParams(location.hash.slice(1));
-  return { run: params.get('run'), case: params.get('case'), v: params.get('v'), cmp: params.get('cmp') };
+  return { run: params.get('run'), case: params.get('case'), v: params.get('v'), cmp: params.get('cmp'), view: params.get('view') };
+}
+
+// cmp is "<spec>" for a version of the same run, or "<runId>|<spec>" for a version of another run.
+function parseCompare(cmp) {
+  if (!cmp) return null;
+  const bar = cmp.indexOf('|');
+  return bar < 0 ? { runId: state.run?.id, spec: cmp } : { runId: cmp.slice(0, bar), spec: cmp.slice(bar + 1) };
 }
 
 function writeHash() {
@@ -39,7 +68,8 @@ function writeHash() {
   if (state.run) params.set('run', state.run.id);
   if (state.caseId) params.set('case', state.caseId);
   if (state.version) params.set('v', state.version);
-  if (state.compareWith) params.set('cmp', state.compareWith);
+  if (state.compare) params.set('cmp', state.compare.runId === state.run?.id ? state.compare.spec : `${state.compare.runId}|${state.compare.spec}`);
+  if (state.compare && state.view === 'diff') params.set('view', 'diff');
   history.replaceState(null, '', `#${params}`);
 }
 
@@ -72,11 +102,11 @@ function isLive(run = state.run) {
 }
 
 // One of: done, running, pending, none.
-function caseState(version, caseId) {
+function caseState(version, caseId, run = state.run) {
   if (summaryFor(version, caseId)) return 'done';
-  if (!isLive()) return 'none';
+  if (!isLive(run)) return 'none';
   if (version.running?.includes(caseId)) return 'running';
-  const inRun = state.run.caseIds ? state.run.caseIds.includes(caseId) : true;
+  const inRun = run.caseIds ? run.caseIds.includes(caseId) : true;
   return inRun && ['pending', 'running'].includes(version.status) ? 'pending' : 'none';
 }
 
@@ -212,15 +242,15 @@ function renderOverview() {
 // ---------------------------------------------------------------------------------------------------------------
 // Case detail
 // ---------------------------------------------------------------------------------------------------------------
-async function loadCaseRecord(version) {
+async function loadCaseRecord(version, run = state.run) {
   const def = state.cases.find((c) => c.id === state.caseId);
-  const live = caseState(version, def.id);
+  const live = caseState(version, def.id, run);
   if (live === 'pending' || !version.dir) {
     return { version: version.spec, pending: true };
   }
-  const key = `${state.run.id}|${version.dir}|${def.id}`;
+  const key = `${run.id}|${version.dir}|${def.id}`;
   if (!state.cache.has(key)) {
-    const p = api(`/api/runs/${encodeURIComponent(state.run.id)}/${encodeURIComponent(version.dir)}/${def.category}/${def.name}`)
+    const p = api(`/api/runs/${encodeURIComponent(run.id)}/${encodeURIComponent(version.dir)}/${def.category}/${def.name}`)
       .catch((err) => ({ error: err.message }));
     state.cache.set(key, p);
     // Only finished records are stable enough to cache.
@@ -280,10 +310,10 @@ function filesHtml(step, record) {
     ${hidden ? `<details><summary>${hidden} more under target/{cache,bin,build,backup,resources}</summary><ul class="file-list">${noise}</ul></details>` : ''}</details>`;
 }
 
-function stepHtml(step, record, otherStep) {
+function stepHtml(step, record, otherStep, slot) {
   const isDiff = otherStep && (otherStep.exitCode !== step.exitCode
     || (otherStep.observations?.stdoutIssues?.total ?? null) !== (step.observations?.stdoutIssues?.total ?? null));
-  const id = `${record.version}-${step.index}`;
+  const id = `${slot}-${step.index}`;
   return `<div class="step ${isDiff ? 'differs' : ''}">
     <div class="step-head"><span class="n">${step.index}. ${esc(step.name)}</span>
       ${step.setup ? '<span class="chip setup">setup</span>' : ''}
@@ -304,7 +334,7 @@ function stepHtml(step, record, otherStep) {
   </div>`;
 }
 
-function liveStepHtml(record) {
+function liveStepHtml(record, slot) {
   const s = record.currentStep;
   if (!s) {
     return `<div class="step live"><div class="step-head"><span class="dot live"></span><span class="n">between steps...</span></div></div>`;
@@ -315,11 +345,11 @@ function liveStepHtml(record) {
       <span class="chip running">running</span>
       <span class="dur elapsed" data-since="${esc(s.startedAt)}"></span></div>
     <div class="cmd">${esc(s.command)}</div>
-    <pre class="term live-term ${s.combined ? '' : 'empty-out'}" data-ver="${esc(record.version)}">${esc(s.combined || '(no output yet)')}</pre>
+    <pre class="term live-term ${s.combined ? '' : 'empty-out'}" data-slot="${slot}">${esc(s.combined || '(no output yet)')}</pre>
   </div>`;
 }
 
-function recordColumn(record, other) {
+function recordColumn(record, other, slot = 'a', run = state.run) {
   if (record.pending) {
     return '<p class="muted"><span class="dot none"></span> Pending. Results will appear here automatically once this case runs.</p>';
   }
@@ -337,11 +367,388 @@ function recordColumn(record, other) {
     <a href="${fileUrl(`${record.workDir}`)}" target="_blank">work folder</a>
     ${running ? '' : `<a href="${fileUrl(record.workDir.replace(/\/work$/, '/terminal.txt'))}" target="_blank">terminal.txt</a>`}</div>`;
   const banner = running
-    ? (isLive() ? `<p class="muted">Running: step ${record.currentStep?.index ?? record.steps.length} of ${record.stepCount ?? '?'}. Completed steps appear as they finish.</p>`
+    ? (isLive(run) ? `<p class="muted">Running: step ${record.currentStep?.index ?? record.steps.length} of ${record.stepCount ?? '?'}. Completed steps appear as they finish.</p>`
       : '<p class="chip exitnz">This case never finished (the run was interrupted).</p>')
     : '';
-  const steps = record.steps.map((s) => stepHtml(s, record, other?.steps?.find((o) => o.index === s.index))).join('');
-  return banner + links + steps + (running && isLive() ? liveStepHtml(record) : '');
+  const steps = record.steps.map((s) => stepHtml(s, record, other?.steps?.find((o) => o.index === s.index), slot)).join('');
+  return banner + links + steps + (running && isLive(run) ? liveStepHtml(record, slot) : '');
+}
+
+// ---------------------------------------------------------------------------------------------------------------
+// Text diff (Myers, line level, with word-level highlights inside changed lines)
+// ---------------------------------------------------------------------------------------------------------------
+const MAX_EDIT_DISTANCE = 3000;
+const MAX_DIFF_LINES = 40000;
+const DIFF_CONTEXT = 3;
+let foldSeq = 0;
+
+// Returns ops as [kind, indexInA, indexInB] with kind '=', '-' or '+'.
+function diffSeq(a, b) {
+  let start = 0;
+  while (start < a.length && start < b.length && a[start] === b[start]) start++;
+  let endA = a.length;
+  let endB = b.length;
+  while (endA > start && endB > start && a[endA - 1] === b[endB - 1]) { endA--; endB--; }
+  const ops = [];
+  for (let i = 0; i < start; i++) ops.push(['=', i, i]);
+  ops.push(...myers(a, b, start, endA, start, endB));
+  for (let i = endA, j = endB; i < a.length; i++, j++) ops.push(['=', i, j]);
+  return ops;
+}
+
+function myers(a, b, a0, a1, b0, b1) {
+  const n = a1 - a0;
+  const m = b1 - b0;
+  const replaceAll = () => [
+    ...Array.from({ length: n }, (_, i) => ['-', a0 + i, -1]),
+    ...Array.from({ length: m }, (_, j) => ['+', -1, b0 + j]),
+  ];
+  if (!n || !m) return replaceAll();
+  const max = n + m;
+  const off = max + 1;
+  const v = new Int32Array(2 * max + 3);
+  const trace = [];
+  for (let d = 0; d <= Math.min(max, MAX_EDIT_DISTANCE); d++) {
+    for (let k = -d; k <= d; k += 2) {
+      let x = (k === -d || (k !== d && v[off + k - 1] < v[off + k + 1])) ? v[off + k + 1] : v[off + k - 1] + 1;
+      let y = x - k;
+      while (x < n && y < m && a[a0 + x] === b[b0 + y]) { x++; y++; }
+      v[off + k] = x;
+      if (x >= n && y >= m) {
+        trace.push(v.slice(off - d, off + d + 1));
+        return backtrack(trace, n, m, a0, b0);
+      }
+    }
+    trace.push(v.slice(off - d, off + d + 1));
+  }
+  return replaceAll();
+}
+
+function backtrack(trace, n, m, a0, b0) {
+  const ops = [];
+  let x = n;
+  let y = m;
+  for (let d = trace.length - 1; d > 0; d--) {
+    const prev = trace[d - 1];
+    const at = (k) => prev[k + d - 1];
+    const k = x - y;
+    const prevK = (k === -d || (k !== d && at(k - 1) < at(k + 1))) ? k + 1 : k - 1;
+    const prevX = at(prevK);
+    const prevY = prevX - prevK;
+    while (x > prevX && y > prevY) { ops.push(['=', a0 + --x, b0 + --y]); }
+    if (x === prevX) ops.push(['+', -1, b0 + --y]);
+    else ops.push(['-', a0 + --x, -1]);
+  }
+  while (x > 0 && y > 0) ops.push(['=', a0 + --x, b0 + --y]);
+  return ops.reverse();
+}
+
+function inlineDiff(left, right) {
+  if (left.length + right.length > 4000) return [esc(left), esc(right)];
+  const ta = left.match(/\w+|\s+|[^\w\s]/g) || [];
+  const tb = right.match(/\w+|\s+|[^\w\s]/g) || [];
+  let l = '';
+  let r = '';
+  let run = null;
+  let buf = '';
+  const flush = () => {
+    if (!buf) return;
+    if (run === '-') l += `<span class="w-del">${esc(buf)}</span>`;
+    else if (run === '+') r += `<span class="w-ins">${esc(buf)}</span>`;
+    else { l += esc(buf); r += esc(buf); }
+    buf = '';
+  };
+  for (const [kind, i, j] of diffSeq(ta, tb)) {
+    if (kind !== run) { flush(); run = kind; }
+    buf += kind === '+' ? tb[j] : ta[i];
+  }
+  flush();
+  return [l, r];
+}
+
+function toLines(text) {
+  const lines = String(text ?? '').replace(/\r\n?/g, '\n').split('\n');
+  if (lines.length && lines[lines.length - 1] === '') lines.pop();
+  return lines;
+}
+
+// Rows are {t:'='|'chg', ...}; changed blocks pair the i-th removed line with the i-th added one for word highlights.
+function diffRows(A, B) {
+  const rows = [];
+  let block = null;
+  const close = () => {
+    if (!block) return;
+    const pairs = Math.min(block.dels.length, block.ins.length);
+    block.delHtml = block.dels.map((i) => esc(A[i]));
+    block.insHtml = block.ins.map((j) => esc(B[j]));
+    for (let p = 0; p < pairs; p++) {
+      [block.delHtml[p], block.insHtml[p]] = inlineDiff(A[block.dels[p]], B[block.ins[p]]);
+    }
+    rows.push(block);
+    block = null;
+  };
+  for (const [kind, i, j] of diffSeq(A, B)) {
+    if (kind === '=') {
+      close();
+      rows.push({ t: '=', a: i, b: j });
+    } else {
+      block ||= { t: 'chg', dels: [], ins: [] };
+      (kind === '-' ? block.dels : block.ins).push(kind === '-' ? i : j);
+    }
+  }
+  close();
+  return rows;
+}
+
+function renderDiff(textA, textB) {
+  const A = toLines(textA);
+  const B = toLines(textB);
+  if (!A.length && !B.length) {
+    return { html: '<div class="diff-empty">(empty on both sides)</div>', added: 0, removed: 0, changed: false };
+  }
+  if (A.length > MAX_DIFF_LINES || B.length > MAX_DIFF_LINES) {
+    return { html: '<div class="diff-empty">Too large to diff in the browser; use the raw output links.</div>', added: 0, removed: 0, changed: textA !== textB };
+  }
+  const rows = diffRows(A, B);
+  const removed = rows.reduce((n, r) => n + (r.t === 'chg' ? r.dels.length : 0), 0);
+  const added = rows.reduce((n, r) => n + (r.t === 'chg' ? r.ins.length : 0), 0);
+  const split = state.diffOpts.mode === 'split';
+  const cols = split ? 4 : 3;
+  const eqRow = (r) => (split
+    ? `<tr><td class="ln">${r.a + 1}</td><td class="code">${esc(A[r.a])}</td><td class="ln">${r.b + 1}</td><td class="code">${esc(B[r.b])}</td></tr>`
+    : `<tr><td class="ln">${r.a + 1}</td><td class="ln">${r.b + 1}</td><td class="code"><span class="sign"> </span>${esc(A[r.a])}</td></tr>`);
+  const chgRows = (r) => {
+    if (split) {
+      let html = '';
+      for (let p = 0; p < Math.max(r.dels.length, r.ins.length); p++) {
+        const left = p < r.dels.length ? `<td class="ln del">${r.dels[p] + 1}</td><td class="code del">${r.delHtml[p]}</td>` : '<td class="ln filler"></td><td class="code filler"></td>';
+        const right = p < r.ins.length ? `<td class="ln ins">${r.ins[p] + 1}</td><td class="code ins">${r.insHtml[p]}</td>` : '<td class="ln filler"></td><td class="code filler"></td>';
+        html += `<tr>${left}${right}</tr>`;
+      }
+      return html;
+    }
+    return r.dels.map((i, p) => `<tr><td class="ln del">${i + 1}</td><td class="ln del"></td><td class="code del"><span class="sign">-</span>${r.delHtml[p]}</td></tr>`).join('')
+      + r.ins.map((j, p) => `<tr><td class="ln ins"></td><td class="ln ins">${j + 1}</td><td class="code ins"><span class="sign">+</span>${r.insHtml[p]}</td></tr>`).join('');
+  };
+  let body = '<tbody>';
+  for (let i = 0; i < rows.length;) {
+    if (rows[i].t !== '=') {
+      body += chgRows(rows[i++]);
+      continue;
+    }
+    let j = i;
+    while (j < rows.length && rows[j].t === '=') j++;
+    const keepHead = i === 0 ? 0 : DIFF_CONTEXT;
+    const keepTail = j === rows.length ? 0 : DIFF_CONTEXT;
+    const hidden = j - i - keepHead - keepTail;
+    if (state.diffOpts.hideUnchanged && hidden > 1) {
+      body += rows.slice(i, i + keepHead).map(eqRow).join('');
+      const id = `fold-${++foldSeq}`;
+      body += `</tbody><tbody><tr class="fold"><td colspan="${cols}"><button type="button" data-unfold="${id}">Show ${hidden} unchanged line${hidden === 1 ? '' : 's'}</button></td></tr></tbody>
+        <tbody id="${id}" hidden>${rows.slice(i + keepHead, j - keepTail).map(eqRow).join('')}</tbody><tbody>`;
+      body += rows.slice(j - keepTail, j).map(eqRow).join('');
+    } else {
+      body += rows.slice(i, j).map(eqRow).join('');
+    }
+    i = j;
+  }
+  body += '</tbody>';
+  const colgroup = split
+    ? '<colgroup><col class="c-ln"><col><col class="c-ln"><col></colgroup>'
+    : '<colgroup><col class="c-ln"><col class="c-ln"><col></colgroup>';
+  return { html: `<table class="diff ${split ? 'split' : 'unified'}">${colgroup}${body}</table>`, added, removed, changed: added + removed > 0 };
+}
+
+function diffStat(d) {
+  return d.changed ? `<span class="stat-ins">+${d.added}</span> <span class="stat-del">-${d.removed}</span>` : '<span class="muted">no changes</span>';
+}
+
+// ---------------------------------------------------------------------------------------------------------------
+// Diff view between two case records (any two versions, from the same run or from different runs)
+// ---------------------------------------------------------------------------------------------------------------
+const stripAnsi = (s) => String(s ?? '').replace(/\u001b\[[0-9;?]*[A-Za-z]/g, '');
+
+// Run ids and version folder names appear in absolute paths in the output; replace them so they don't show as changes.
+function normalizer(ctx) {
+  const tokens = [[ctx.runId, '<run>'], [ctx.dir, '<version>']].filter(([t]) => t);
+  return (text) => {
+    let out = stripAnsi(text);
+    if (state.diffOpts.normalize) {
+      for (const [t, rep] of tokens) out = out.split(t).join(rep);
+    }
+    return out;
+  };
+}
+
+function stepSummaryText(step) {
+  if (!step) return '';
+  const o = step.observations || {};
+  const lines = [`command: ${step.command}`, `cwd: ${step.cwd}`, `exit code: ${step.exitCode}${step.timedOut ? ' (timed out)' : ''}`];
+  if (o.stdoutIssues) {
+    lines.push(`printed issues: ${o.stdoutIssues.total} (${o.stdoutIssues.format}), ${o.stdoutIssues.suppressed || 0} suppressed`);
+    for (const [k, n] of Object.entries(o.stdoutIssues.byRule || {}).sort((x, y) => x[0].localeCompare(y[0], undefined, { numeric: true }))) {
+      lines.push(`  ${k}: ${n}`);
+    }
+  }
+  if (o.summaryLine) lines.push(`summary: ${o.summaryLine}`);
+  for (const r of o.reports || []) {
+    lines.push(`report: ${r.path}${r.issues ? ` (${r.issues.total} issues, ${r.issues.suppressed || 0} suppressed)` : ''}`);
+  }
+  for (const e of o.errors || []) lines.push(`error: ${e}`);
+  for (const w of o.warnings || []) lines.push(`warning: ${w}`);
+  const ch = step.changes || {};
+  for (const kind of ['created', 'modified', 'deleted']) {
+    for (const f of (ch[kind] || []).filter((x) => !NOISE.test(x.path))) lines.push(`${kind}: ${f.path}`);
+  }
+  return lines.join('\n');
+}
+
+function streamDiff(pair, stream) {
+  return renderDiff(pair.normA(pair.sa?.[stream] || ''), pair.normB(pair.sb?.[stream] || ''));
+}
+
+function stepDiffHtml(pair, i) {
+  const { sa, sb } = pair;
+  const s = sa || sb;
+  const stream = state.diffStreams[`${state.caseId}:${s.index}`] || 'combined';
+  const sum = renderDiff(pair.normA(stepSummaryText(sa)), pair.normB(stepSummaryText(sb)));
+  const out = streamDiff(pair, stream);
+  const streamDiffers = (name) => pair.normA(sa?.[name] || '') !== pair.normB(sb?.[name] || '');
+  const anyOutput = ['combined', 'stdout', 'stderr'].some(streamDiffers);
+  const exit = sa && sb
+    ? (sa.exitCode === sb.exitCode ? `<span class="chip ${sa.exitCode === 0 ? 'exit0' : 'exitnz'}">exit ${esc(sa.exitCode)}</span>`
+      : `<span class="chip exitnz">exit ${esc(sa.exitCode)} → ${esc(sb.exitCode)}</span>`)
+    : '';
+  const presence = !sa ? '<span class="chip ins-chip">only on the right</span>' : !sb ? '<span class="chip del-chip">only on the left</span>' : '';
+  const identical = !sum.changed && !anyOutput;
+  pair.identical = identical;
+  const nameDiff = sa && sb && sa.name !== sb.name ? ` <span class="muted">vs ${esc(sb.name)}</span>` : '';
+  return `<div class="step diff-step ${identical ? 'same' : 'differs'}">
+    <div class="step-head"><span class="n">${s.index}. ${esc(s.name)}</span>${nameDiff}
+      ${s.setup ? '<span class="chip setup">setup</span>' : ''}${exit}${presence}
+      <span class="chip ${identical ? '' : 'diff'}">${identical ? 'identical' : 'differs'}</span>
+      <span class="dur">${fmtMs(sa?.durationMs)}${sa && sb ? ' / ' : ''}${fmtMs(sb?.durationMs)}</span></div>
+    <details class="diff-sec" ${sum.changed ? 'open' : ''}><summary>Command, exit code and observations · ${diffStat(sum)}</summary>${sum.html}</details>
+    <div class="diff-sec">
+      <div class="diff-streams" data-pair="${i}">${['combined', 'stdout', 'stderr'].map((name) => `<button type="button" data-stream="${name}" class="${name === stream ? 'on' : ''}">${name}${streamDiffers(name) ? ' <span class="mark"></span>' : ''}</button>`).join('')}
+        <span class="spacer"></span><span class="diff-out-stat">${diffStat(out)}</span></div>
+      <div class="diff-out" data-pair="${i}">${out.html}</div>
+    </div>
+  </div>`;
+}
+
+function workFiles(record) {
+  const files = new Set();
+  for (const s of record?.steps || []) {
+    for (const f of [...(s.changes?.created || []), ...(s.changes?.modified || [])]) {
+      if (!NOISE.test(f.path)) files.add(f.path);
+    }
+    for (const r of s.observations?.reports || []) files.add(r.path);
+  }
+  return files;
+}
+
+function recordState(r) {
+  if (r.pending) return 'pending';
+  if (r.starting) return 'starting';
+  if (r.error) return r.error;
+  if (r.status !== 'ran' && r.status !== 'running') return `${r.status}: ${r.skipReason || ''}`;
+  return null;
+}
+
+function diffViewHtml(a, b, ctxA, ctxB) {
+  const notReady = [[a, ctxA], [b, ctxB]].map(([r, c]) => [recordState(r), c]).filter(([s]) => s);
+  if (notReady.length) {
+    return `<div class="diff-view"><p class="muted">Both sides need recorded steps to diff.</p>
+      ${notReady.map(([s, c]) => `<p><b>${esc(c.label)}</b>: <span class="muted">${esc(s)}</span></p>`).join('')}</div>`;
+  }
+  const normA = normalizer(ctxA);
+  const normB = normalizer(ctxB);
+  const indexes = [...new Set([...a.steps, ...b.steps].map((s) => s.index))].sort((x, y) => x - y);
+  state.diffPairs = indexes.map((idx) => ({
+    sa: a.steps.find((s) => s.index === idx), sb: b.steps.find((s) => s.index === idx), normA, normB,
+  }));
+  state.diffRecords = { a, b, normA, normB };
+  const files = [...new Set([...workFiles(a), ...workFiles(b)])].sort();
+  const steps = state.diffPairs.map(stepDiffHtml).join('');
+  const nDiff = state.diffPairs.filter((p) => !p.identical).length;
+  const running = [a, b].some((r) => r.status === 'running');
+  const opt = (key, label) => `<label class="diff-opt"><input type="checkbox" data-opt="${key}" ${state.diffOpts[key] ? 'checked' : ''}> ${label}</label>`;
+  return `<div class="diff-view">
+    <div class="diff-bar">
+      <span class="legend"><span class="sw del"></span>${esc(ctxA.label)}</span>
+      <span class="legend"><span class="sw ins"></span>${esc(ctxB.label)}</span>
+      <span class="spacer"></span>
+      <div class="seg small"><button type="button" data-diffmode="split" class="${state.diffOpts.mode === 'split' ? 'on' : ''}">Split</button><button type="button" data-diffmode="unified" class="${state.diffOpts.mode === 'unified' ? 'on' : ''}">Unified</button></div>
+      ${opt('hideUnchanged', 'Hide unchanged lines')}
+      ${opt('normalize', 'Ignore run and version folder names')}
+    </div>
+    <p class="muted">${nDiff} of ${state.diffPairs.length} steps differ. Steps are paired by their index; red is the left side, green is the right.</p>
+    ${running ? '<div class="step live diff-live"><div class="step-head"><span class="dot live"></span><span class="n">One side is still running; the diff covers the steps finished so far.</span></div></div>' : ''}
+    ${steps}
+    ${files.length ? `<h3 class="diff-h">Files in the work folder <span class="muted">(final contents, loaded when opened)</span></h3>
+      ${files.map((f) => `<details class="step diff-file" data-file="${esc(f)}"><summary><span class="mono">${esc(f)}</span>
+        ${!workFiles(a).has(f) ? '<span class="chip ins-chip">only on the right</span>' : !workFiles(b).has(f) ? '<span class="chip del-chip">only on the left</span>' : ''}
+        <span class="file-stat"></span></summary><div class="file-diff muted">Loading...</div></details>`).join('')}` : ''}
+  </div>`;
+}
+
+function prettyJson(text) {
+  const t = text.trim();
+  if (!t.startsWith('{') && !t.startsWith('[')) return text;
+  try {
+    return JSON.stringify(JSON.parse(t), null, 2);
+  } catch {
+    return text;
+  }
+}
+
+async function loadFileDiff(det) {
+  if (det.dataset.loaded) return;
+  det.dataset.loaded = '1';
+  const { a, b, normA, normB } = state.diffRecords || {};
+  const rel = det.dataset.file;
+  const get = async (rec) => {
+    if (!workFiles(rec).has(rel)) return '';
+    const res = await fetch(fileUrl(`${rec.workDir}/${rel}`));
+    return res.ok ? res.text() : '';
+  };
+  try {
+    const [ta, tb] = await Promise.all([get(a), get(b)]);
+    const d = renderDiff(prettyJson(normA(ta)), prettyJson(normB(tb)));
+    det.querySelector('.file-diff').outerHTML = d.html;
+    det.querySelector('.file-stat').innerHTML = diffStat(d);
+  } catch (err) {
+    det.querySelector('.file-diff').textContent = `Failed to load: ${err.message}`;
+  }
+}
+
+function compareTarget() {
+  if (!state.compare || !state.run) return null;
+  const run = state.compare.runId === state.run.id ? state.run : state.runs.find((r) => r.id === state.compare.runId);
+  const version = run?.versions?.find((v) => v.spec === state.compare.spec);
+  if (!version || (run.id === state.run.id && version.spec === state.version)) return null;
+  return { run, version };
+}
+
+function sideLabel(run, version) {
+  return run.id === state.run.id ? version.spec : `${version.spec} · ${run.id}`;
+}
+
+function compareOptionsHtml(caseId) {
+  const opt = (run, v) => {
+    const on = state.compare?.runId === run.id && state.compare?.spec === v.spec;
+    return `<option value="${esc(`${run.id}|${v.spec}`)}" ${on ? 'selected' : ''}>${esc(v.spec)}${v.central && !v.spec.includes('@') ? ` [${esc(v.central)}]` : ''}</option>`;
+  };
+  const groups = [];
+  const own = runVersions().filter((v) => v.spec !== state.version);
+  if (own.length) groups.push(`<optgroup label="This run">${own.map((v) => opt(state.run, v)).join('')}</optgroup>`);
+  for (const r of state.runs) {
+    if (r.id === state.run.id) continue;
+    const vs = (r.versions || []).filter((v) => v.dir && caseState(v, caseId, r) !== 'none');
+    if (vs.length) groups.push(`<optgroup label="Run ${esc(r.id)}">${vs.map((v) => opt(r, v)).join('')}</optgroup>`);
+  }
+  return groups.join('');
 }
 
 let renderSeq = 0;
@@ -371,39 +778,47 @@ async function renderCase({ quiet = false } = {}) {
     $('#detail').innerHTML = `${head}<p class="muted">No run selected.</p>`;
     return;
   }
+  const target = compareTarget();
+  const options = compareOptionsHtml(def.id);
   const tabs = `<div class="version-tabs">${versions.map((v) => `<button data-v="${esc(v.spec)}" class="${v.spec === state.version ? 'on' : ''}">${esc(v.spec)}</button>`).join('')}
-    ${versions.length > 1 ? `<label class="compare-toggle">compare with <select id="compareSelect"><option value="">-</option>
-      ${versions.filter((v) => v.spec !== state.version).map((v) => `<option ${v.spec === state.compareWith ? 'selected' : ''}>${esc(v.spec)}</option>`).join('')}</select></label>` : ''}</div>`;
+    ${options ? `<label class="compare-toggle">compare with <select id="compareSelect"><option value="">-</option>${options}</select></label>` : ''}
+    ${target ? `<div class="seg view-seg"><button type="button" data-view="side" class="${state.view !== 'diff' ? 'on' : ''}">Side by side</button><button type="button" data-view="diff" class="${state.view === 'diff' ? 'on' : ''}">Diff</button></div>` : ''}</div>`;
   if (!quiet) {
     $('#detail').innerHTML = `${head}${tabs}<div id="caseBody" class="muted">Loading...</div>`;
   }
 
   const primary = versions.find((v) => v.spec === state.version);
-  const secondary = versions.find((v) => v.spec === state.compareWith && v.spec !== state.version);
   if (!primary) {
     $('#detail').innerHTML = `${head}${tabs}<div id="caseBody" class="muted">This run has no usable versions.</div>`;
     return;
   }
-  const [a, b] = await Promise.all([loadCaseRecord(primary), secondary ? loadCaseRecord(secondary) : null]);
+  const [a, b] = await Promise.all([loadCaseRecord(primary), target ? loadCaseRecord(target.version, target.run) : null]);
   if (token !== renderSeq) return;
-  const body = secondary
-    ? `<div class="columns two"><div><div class="col-title">${esc(primary.spec)}</div>${recordColumn(a, b)}</div>
-       <div><div class="col-title">${esc(secondary.spec)}</div>${recordColumn(b, a)}</div></div>`
-    : `<div class="columns">${recordColumn(a)}</div>`;
+  const ctxA = { runId: state.run.id, dir: primary.dir, label: sideLabel(state.run, primary) };
+  const ctxB = target && { runId: target.run.id, dir: target.version.dir, label: sideLabel(target.run, target.version) };
+  let body;
+  if (!target) {
+    body = `<div class="columns">${recordColumn(a)}</div>`;
+  } else if (state.view === 'diff') {
+    body = diffViewHtml(a, b, ctxA, ctxB);
+  } else {
+    body = `<div class="columns two"><div><div class="col-title">${esc(ctxA.label)}</div>${recordColumn(a, b, 'a')}</div>
+       <div><div class="col-title">${esc(ctxB.label)}</div>${recordColumn(b, a, 'b', target.run)}</div></div>`;
+  }
   const scroll = $('#detail').scrollTop;
   $('#detail').innerHTML = `${head}${tabs}<div id="caseBody">${body}</div>`;
   $('#detail').scrollTop = scroll;
   document.querySelectorAll('.live-term').forEach((pre) => { pre.scrollTop = pre.scrollHeight; });
   tickElapsed();
-  const records = [a, b].filter(Boolean);
-  state.shown = { caseId: def.id, runId: state.run.id, sig: records.map(recordSig).join('|') };
+  const records = { a, b };
+  state.shown = { caseId: def.id, runId: state.run.id, sig: [a, b].filter(Boolean).map(recordSig).join('|') };
   document.querySelectorAll('.term-tabs').forEach((tabsEl) => {
     tabsEl.addEventListener('click', (e) => {
       const btn = e.target.closest('button');
       if (!btn) return;
-      const [ver, idx] = [tabsEl.dataset.step.slice(0, tabsEl.dataset.step.lastIndexOf('-')), Number(tabsEl.dataset.step.split('-').pop())];
-      const rec = records.find((r) => r.version === ver);
-      const step = rec?.steps.find((s) => s.index === idx);
+      const [slot, idx] = tabsEl.dataset.step.split('-');
+      const rec = records[slot];
+      const step = rec?.steps.find((s) => s.index === Number(idx));
       const pre = tabsEl.nextElementSibling;
       const text = step?.[btn.dataset.stream] || '';
       pre.textContent = text || '(no output)';
@@ -515,15 +930,17 @@ async function poll() {
 
 // While a case is running, re-render only when a step finishes; otherwise just stream the current step's output.
 async function refreshLiveCase() {
-  const versions = runVersions();
-  const shown = [state.version, state.compareWith].map((s) => versions.find((v) => v.spec === s)).filter(Boolean);
-  const records = await Promise.all(shown.map(loadCaseRecord));
+  const primary = runVersions().find((v) => v.spec === state.version);
+  const target = compareTarget();
+  const [a, b] = await Promise.all([primary ? loadCaseRecord(primary) : null, target ? loadCaseRecord(target.version, target.run) : null]);
+  const records = [a, b].filter(Boolean);
   if (records.map(recordSig).join('|') !== state.shown?.sig) {
     await renderCase({ quiet: true });
     return;
   }
-  for (const r of records) {
-    const pre = document.querySelector(`.live-term[data-ver="${CSS.escape(r.version)}"]`);
+  for (const [slot, r] of [['a', a], ['b', b]]) {
+    if (!r) continue;
+    const pre = document.querySelector(`.live-term[data-slot="${slot}"]`);
     const text = r.currentStep?.combined;
     if (!pre || !text || pre.textContent === text) continue;
     const atBottom = pre.scrollTop + pre.clientHeight >= pre.scrollHeight - 20;
@@ -562,11 +979,17 @@ async function init() {
   const h = readHash();
   state.caseId = h.case;
   state.version = h.v;
-  state.compareWith = h.cmp;
+  state.compare = parseCompare(h.cmp);
+  state.view = h.view === 'diff' ? 'diff' : 'side';
   render();
 
   $('#runSelect').addEventListener('change', (e) => {
+    const prevId = state.run?.id;
     state.run = state.runs.find((r) => r.id === e.target.value);
+    // A same-run comparison follows the newly selected run; a cross-run one stays pinned to its run.
+    if (state.compare?.runId === prevId && state.run?.versions?.some((v) => v.spec === state.compare.spec)) {
+      state.compare = { ...state.compare, runId: state.run.id };
+    }
     state.cache.clear();
     renderRunSelect();
     render();
@@ -593,16 +1016,51 @@ async function init() {
     const vb = e.target.closest('.version-tabs button[data-v]');
     if (vb) {
       state.version = vb.dataset.v;
-      if (state.compareWith === state.version) state.compareWith = null;
+      if (state.compare?.runId === state.run.id && state.compare.spec === state.version) state.compare = null;
       render();
+    }
+    const viewBtn = e.target.closest('button[data-view]');
+    if (viewBtn) {
+      state.view = viewBtn.dataset.view;
+      render();
+    }
+    const modeBtn = e.target.closest('button[data-diffmode]');
+    if (modeBtn) {
+      state.diffOpts.mode = modeBtn.dataset.diffmode;
+      saveDiffOpts();
+      renderCase({ quiet: true });
+    }
+    const unfold = e.target.closest('button[data-unfold]');
+    if (unfold) {
+      document.getElementById(unfold.dataset.unfold).hidden = false;
+      unfold.closest('tbody').remove();
+    }
+    const streamBtn = e.target.closest('.diff-streams button[data-stream]');
+    if (streamBtn) {
+      const bar = streamBtn.closest('.diff-streams');
+      const pair = state.diffPairs[Number(bar.dataset.pair)];
+      state.diffStreams[`${state.caseId}:${(pair.sa || pair.sb).index}`] = streamBtn.dataset.stream;
+      const d = streamDiff(pair, streamBtn.dataset.stream);
+      bar.nextElementSibling.innerHTML = d.html;
+      bar.querySelector('.diff-out-stat').innerHTML = diffStat(d);
+      bar.querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === streamBtn));
     }
   });
   $('#detail').addEventListener('change', (e) => {
     if (e.target.id === 'compareSelect') {
-      state.compareWith = e.target.value || null;
+      state.compare = parseCompare(e.target.value);
       render();
     }
+    if (e.target.dataset.opt) {
+      state.diffOpts[e.target.dataset.opt] = e.target.checked;
+      saveDiffOpts();
+      renderCase({ quiet: true });
+    }
   });
+  // toggle does not bubble, so listen in the capture phase.
+  $('#detail').addEventListener('toggle', (e) => {
+    if (e.target.matches?.('details.diff-file') && e.target.open) loadFileDiff(e.target);
+  }, true);
   document.querySelector('.brand').addEventListener('click', () => { state.caseId = null; render(); });
   document.querySelector('.brand').style.cursor = 'pointer';
 
