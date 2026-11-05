@@ -3,6 +3,7 @@
 // Usage: node runner/run.mjs [--versions=a,b@local] [--cases=packages/*,sf-01*] [--tags=x] [--skip-tags=y]
 //                            [--label=name] [--no-restore] [--env=path/to/.env] [--jobs=N]
 //                            [--serial-tags=network,sonarqube] [--central=central|dev|stage]
+//                            [--bal-dists=0.11.*=2201.12.12,0.13.*=2201.13.5]
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -15,6 +16,7 @@ import { snapshot, diffSnapshots, copyDir } from './lib/snapshot.mjs';
 import { observeStep } from './lib/observe.mjs';
 import {
   CENTRALS, parseVersionSpec, switchScanVersion, activeScanVersion, activeToolFingerprint, withCentral,
+  parseDistMap, distributionFor, activeDistribution, switchDistribution,
 } from './lib/tool.mjs';
 
 function parseArgs(argv) {
@@ -297,6 +299,8 @@ async function main() {
   const runDir = path.join(RESULTS_DIR, runId);
   fs.mkdirSync(runDir, { recursive: true });
   const originalActive = readActiveToolEntry();
+  const distRules = parseDistMap(args['bal-dists'] ?? config.BAL_DISTRIBUTIONS);
+  const originalDist = distRules.length ? (await activeDistribution(bal, env)).dist : null;
 
   const runEnv = withCentral(env, central);
   const balVersion = await runCommand(`${bal} version`, { env: runEnv });
@@ -329,6 +333,22 @@ async function main() {
     const versionCentral = version.central || central || null;
     const versionEnv = withCentral(runEnv, version.central);
     versionEntry.central = versionCentral;
+    const dist = distributionFor(distRules, version.version);
+    if (dist) {
+      console.log(`>>> switching Ballerina distribution to ${dist}`);
+      const distSwitch = await switchDistribution(bal, dist, runEnv);
+      fs.writeFileSync(path.join(versionDir, 'dist-switch.txt'), distSwitch.log
+        .map((r) => `> ${r.command}\n${stripAnsi(r.combined).trim()}\n[exit ${r.exitCode}]`).join('\n\n'));
+      versionEntry.distribution = distSwitch.active;
+      if (!distSwitch.ok) {
+        versionEntry.status = 'unavailable';
+        console.log(`    could not activate distribution ${dist} (active: ${distSwitch.active}); skipping its cases\n`);
+        terminalLog.push(`##### scan ${version.spec}: could not activate distribution ${dist}, see ${posix(path.relative(runDir, versionDir))}/dist-switch.txt`, '');
+        saveRun();
+        continue;
+      }
+      versionEntry.balVersion = stripAnsi((await runCommand(`${bal} version`, { env: runEnv })).combined).trim();
+    }
     console.log(`>>> switching scan tool to ${version.spec}${versionCentral ? ` (Central: ${versionCentral})` : ''}`);
     const switched = await switchScanVersion(bal, version, runEnv);
     fs.writeFileSync(path.join(versionDir, 'tool-switch.txt'), switched.log
@@ -415,10 +435,16 @@ async function main() {
     saveRun();
   }
 
+  // The original tool was active on the original distribution, so restore the distribution first.
+  if (originalDist && bool(config.RESTORE_ACTIVE_VERSION, true) && !args['no-restore']) {
+    const restoredDist = await switchDistribution(bal, originalDist, env);
+    run.restoredDistribution = restoredDist.active;
+    console.log(`\nRestored Ballerina distribution: ${restoredDist.active}`);
+  }
   if (originalActive && bool(config.RESTORE_ACTIVE_VERSION, true) && !args['no-restore']) {
     const restored = await switchScanVersion(bal, parseVersionSpec(originalActive), env);
     run.restoredActiveScanVersion = restored.active;
-    console.log(`\nRestored active scan tool: ${restored.active}`);
+    console.log(`Restored active scan tool: ${restored.active}`);
   } else {
     run.restoredActiveScanVersion = (await activeScanVersion(bal, env)).version;
   }

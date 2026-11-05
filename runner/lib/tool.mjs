@@ -28,22 +28,78 @@ export function parseVersionSpec(spec) {
   return { spec, version, repo, central: CENTRALS.includes(suffix.toLowerCase()) ? repo : null };
 }
 
+/** Parses "0.11.*=2201.12.12,0.13.*=2201.13.5" into ordered [pattern, distribution] rules. */
+export function parseDistMap(value) {
+  return (value || '').split(',').map((s) => s.trim()).filter(Boolean).map((entry) => {
+    const [pattern, dist] = entry.split('=').map((s) => s.trim());
+    const regex = new RegExp(`^${pattern.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*')}$`);
+    return { pattern, dist, regex };
+  }).filter((r) => r.pattern && r.dist);
+}
+
+export function distributionFor(rules, scanVersion) {
+  return rules.find((r) => r.regex.test(scanVersion))?.dist || null;
+}
+
+export async function activeDistribution(bal, env) {
+  const result = await runCommand(`${bal} version`, { env });
+  return { dist: result.stdout.match(/Ballerina\s+(\S+)/)?.[1] || null, result };
+}
+
+/** Makes the given Ballerina distribution active: `bal dist use`, pulling it first if it is not installed. */
+export async function switchDistribution(bal, dist, env) {
+  const log = [];
+  if ((await activeDistribution(bal, env)).dist === dist) {
+    return { ok: true, active: dist, log };
+  }
+  const parked = await parkOnLocalTool(bal, env);
+  if (parked) {
+    log.push(parked);
+  }
+  for (const action of ['use', 'pull', 'use']) {
+    const result = await runCommand(`${bal} dist ${action} ${dist}`, { env, timeoutMs: 1800000 });
+    log.push(result);
+    const active = await activeDistribution(bal, env);
+    log.push(active.result);
+    if (active.dist === dist) {
+      return { ok: true, active: active.dist, log };
+    }
+  }
+  return { ok: false, active: (await activeDistribution(bal, env)).dist, log };
+}
+
 export async function activeScanVersion(bal, env) {
   const result = await runCommand(`${bal} tool list`, { env });
-  const row = result.stdout.split(/\r?\n/).find((l) => /^\|\s*scan\s*\|/.test(l));
+  const rows = result.stdout.split(/\r?\n/).filter((l) => /^\|\s*scan\s*\|/.test(l));
+  // Newer bal lists every installed version and marks the active one with "*".
+  const row = rows.length > 1 ? rows.find((l) => l.split('|')[2].includes('*')) : rows[0];
   // A local-repository tool shows as "0.13.0-SNAPSHOT [repo = local]", truncated to the column width.
-  return { version: row ? row.split('|')[2].trim().split(/\s+/)[0] : null, result };
+  return { version: row ? row.split('|')[2].replace('*', '').trim().split(/\s+/)[0] : null, result };
+}
+
+const BAL_TOOLS_TOML = path.join(os.homedir(), '.ballerina', '.config', 'bal-tools.toml');
+
+function scanToolBlocks() {
+  if (!fs.existsSync(BAL_TOOLS_TOML)) {
+    return [];
+  }
+  return fs.readFileSync(BAL_TOOLS_TOML, 'utf8').split('[[tool]]').filter((b) => /id\s*=\s*"scan"/.test(b))
+    .map((b) => ({
+      version: b.match(/version\s*=\s*"([^"]+)"/)?.[1],
+      local: /repository\s*=\s*"local"/.test(b),
+      active: /active\s*=\s*true/.test(b),
+      force: /force\s*=\s*true/.test(b),
+    }));
 }
 
 /**
  * Identifies the active scan tool build, so a tool republished in the middle of a run can be noticed.
  */
 export function activeToolFingerprint() {
-  const file = path.join(os.homedir(), '.ballerina', '.config', 'bal-tools.toml');
-  if (!fs.existsSync(file)) {
+  if (!fs.existsSync(BAL_TOOLS_TOML)) {
     return null;
   }
-  const block = fs.readFileSync(file, 'utf8').split('[[tool]]')
+  const block = fs.readFileSync(BAL_TOOLS_TOML, 'utf8').split('[[tool]]')
     .find((b) => /id\s*=\s*"scan"/.test(b) && /active\s*=\s*true/.test(b));
   if (!block) {
     return null;
@@ -83,4 +139,19 @@ export async function switchScanVersion(bal, { version, repo, central }, baseEnv
   }
   const active = await activeScanVersion(bal, baseEnv);
   return { ok: false, active: active.version, log };
+}
+
+/**
+ * After a distribution switch, bal's manifest merge (BlendedBalToolsManifest:105) crashes every `bal tool` command
+ * when the active scan tool is a non-forced Central one and local-repository versions exist. A local active tool
+ * avoids that path, and 2201.12.x `bal tool use` never writes `force`, so park on a local version before switching.
+ */
+export async function parkOnLocalTool(bal, env) {
+  const blocks = scanToolBlocks();
+  const active = blocks.find((b) => b.active);
+  const local = blocks.find((b) => b.local);
+  if (!active || active.local || active.force || !local) {
+    return null;
+  }
+  return runCommand(`${bal} tool use scan:${local.version} --repository=local`, { env });
 }
