@@ -1,0 +1,4 @@
+[package]
+org = "playground"
+name = "fingerprint_reports"
+version = "0.1.0"

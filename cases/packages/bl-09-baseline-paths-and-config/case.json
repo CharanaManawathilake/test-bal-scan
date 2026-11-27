@@ -1,0 +1,124 @@
+{
+  "title": "Baseline paths and invalid [baseline] tables",
+  "description": "[baseline] path is resolved against the folder of Scan.toml, and --baseline-path against the current directory. --create-baseline creates a missing file and its folders. --baseline-path replaces [baseline] path for one run, with a warning. `invalid` checks the [baseline] table itself: wrong types, unknown keys, a URL or an empty path, and [baseline] written as a key. Needs scan 0.15.0+.",
+  "tags": [
+    "package",
+    "baseline",
+    "scan-toml"
+  ],
+  "upstream": [
+    "BaselineTest#testBaselinePaths",
+    "ScanTomlValidationTest",
+    "BEP 1498: Finding fingerprints and baseline adoption (ballerina-spec/beps/tool-scan/1498_scan_baseline.md)"
+  ],
+  "setup": [
+    {
+      "name": "Lock dependencies (nested)",
+      "run": "bal build",
+      "cwd": "nested"
+    },
+    {
+      "name": "Lock dependencies (invalid)",
+      "run": "bal build",
+      "cwd": "invalid"
+    }
+  ],
+  "steps": [
+    {
+      "name": "--create-baseline from the case root",
+      "run": "bal scan nested --create-baseline",
+      "note": "Creates nested/baselines/scan.json, next to nested/Scan.toml, not in the case root, and creates the baselines folder."
+    },
+    {
+      "name": "Scan from inside the package",
+      "run": "bal scan --fail-on-severity=LOW",
+      "cwd": "nested",
+      "note": "0 new issue(s), 2 in baseline."
+    },
+    {
+      "name": "--create-baseline --baseline-path",
+      "run": "bal scan --create-baseline --baseline-path=custom.json",
+      "cwd": "nested",
+      "note": "Warning: --baseline-path=custom.json overrides [baseline] path = \"baselines/scan.json\" in Scan.toml. Creates nested/custom.json."
+    },
+    {
+      "name": "--baseline-path from the case root",
+      "run": "bal scan nested --baseline-path=nested/custom.json --fail-on-severity=LOW",
+      "note": "Resolved against the current directory: 0 new issue(s), 2 in baseline."
+    },
+    {
+      "name": "path = 42 and an unknown key",
+      "edit": [
+        "write",
+        "Scan.toml",
+        "[baseline]\npath = 42\nfile = \"scan-baseline.json\"\n"
+      ],
+      "cwd": "invalid"
+    },
+    {
+      "name": "Scan: wrong type and unknown key",
+      "run": "bal scan",
+      "cwd": "invalid",
+      "note": "2 errors, each at its line and column. Nothing is scanned."
+    },
+    {
+      "name": "A URL",
+      "edit": [
+        "write",
+        "Scan.toml",
+        "[baseline]\npath = \"https://example.com/scan-baseline.json\"\n"
+      ],
+      "cwd": "invalid"
+    },
+    {
+      "name": "Scan: a URL",
+      "run": "bal scan",
+      "cwd": "invalid",
+      "note": "Only a local path is accepted."
+    },
+    {
+      "name": "An empty path",
+      "edit": [
+        "write",
+        "Scan.toml",
+        "[baseline]\npath = \"\"\n"
+      ],
+      "cwd": "invalid"
+    },
+    {
+      "name": "Scan: an empty path",
+      "run": "bal scan",
+      "cwd": "invalid"
+    },
+    {
+      "name": "baseline as a key",
+      "edit": [
+        "write",
+        "Scan.toml",
+        "baseline = \"scan-baseline.json\"\n"
+      ],
+      "cwd": "invalid"
+    },
+    {
+      "name": "Scan: baseline written as a key",
+      "run": "bal scan",
+      "cwd": "invalid",
+      "note": "[baseline] must be a table."
+    },
+    {
+      "name": "[baselines]",
+      "edit": [
+        "write",
+        "Scan.toml",
+        "[baselines]\npath = \"scan-baseline.json\"\n"
+      ],
+      "cwd": "invalid"
+    },
+    {
+      "name": "Scan: misspelled table",
+      "run": "bal scan",
+      "cwd": "invalid",
+      "note": "Unknown table; the error lists [baseline] among the expected tables."
+    }
+  ]
+}

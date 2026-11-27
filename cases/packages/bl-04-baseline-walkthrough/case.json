@@ -1,0 +1,143 @@
+{
+  "title": "Baseline walkthrough: create, check, new finding, stale entries, prune, ignore",
+  "description": "The walkthrough of BEP 1498 on a small package with 3 issues (1 HIGH ballerina:13, 2 LOW ballerina:1). Day 1 adopts the baseline, day 2 adds lines above, day 3 adds a hardcoded password, day 4 fixes old findings and prunes, then --ignore-baseline, --platform-triggered and accepting a finding with --create-baseline. The summary line, the baseline file and baselineState in the reports change step by step; the Baseline & fingerprints panel shows the entries added and removed. Needs scan 0.15.0+.",
+  "tags": [
+    "package",
+    "baseline",
+    "gate"
+  ],
+  "upstream": [
+    "BaselineTest#testCreateAndCheck",
+    "BaselineTest#testNewIssueTripsGate",
+    "BaselineTest#testStaleEntriesAndPrune",
+    "BaselineTest#testIgnoreBaseline",
+    "BEP 1498: Finding fingerprints and baseline adoption (ballerina-spec/beps/tool-scan/1498_scan_baseline.md)"
+  ],
+  "setup": [
+    {
+      "name": "Write the base sources",
+      "edit": [
+        "use",
+        "../variants/base"
+      ],
+      "cwd": "pkg"
+    },
+    {
+      "name": "Lock dependencies",
+      "run": "bal build",
+      "cwd": "pkg"
+    }
+  ],
+  "steps": [
+    {
+      "name": "Configured baseline does not exist yet",
+      "run": "bal scan",
+      "cwd": "pkg",
+      "note": "Exit 1: baseline scan-baseline.json set in Scan.toml does not exist; run 'bal scan --create-baseline' to create it. A typo in the path must not turn the baseline off. Nothing is scanned."
+    },
+    {
+      "name": "Day 1: --create-baseline with a gate",
+      "run": "bal scan --create-baseline --fail-on-severity=LOW",
+      "cwd": "pkg",
+      "note": "Exit 0: creating never trips the gate. \"0 new issue(s), 3 in baseline\" and \"Saved 3 entries to the baseline at:\". Nothing is printed on stdout ([]); scan_results.json holds all 3 as unchanged."
+    },
+    {
+      "name": "--create-baseline again",
+      "run": "bal scan --create-baseline",
+      "cwd": "pkg",
+      "note": "\"The baseline already holds these 3 entries:\" and the file is not rewritten (no file change, balScanVersion untouched)."
+    },
+    {
+      "name": "Day 2: lines added above",
+      "edit": [
+        "use",
+        "../variants/lines-above"
+      ],
+      "cwd": "pkg"
+    },
+    {
+      "name": "Day 2: scan with a gate",
+      "run": "bal scan --fail-on-severity=LOW",
+      "cwd": "pkg",
+      "note": "0 new issue(s), 3 in baseline; exit 0."
+    },
+    {
+      "name": "Day 3: a pull request adds a password",
+      "edit": [
+        "use",
+        "../variants/new-secret"
+      ],
+      "cwd": "pkg"
+    },
+    {
+      "name": "Day 3: scan with a gate",
+      "run": "bal scan --fail-on-severity=HIGH",
+      "cwd": "pkg",
+      "note": "Exit 1: 1 issue at or above HIGH. Only the new finding is printed (with baselineState new); 1 new issue(s), 3 in baseline."
+    },
+    {
+      "name": "Day 3: SARIF",
+      "run": "bal scan --format=sarif",
+      "cwd": "pkg",
+      "note": "baselineState is on every result (SARIF 3.27.24: all or none): 1 new, 3 unchanged."
+    },
+    {
+      "name": "Day 4: two old findings fixed, the new one reverted",
+      "edit": [
+        "use",
+        "../variants/fixed-two"
+      ],
+      "cwd": "pkg"
+    },
+    {
+      "name": "Day 4: scan",
+      "run": "bal scan --fail-on-severity=LOW",
+      "cwd": "pkg",
+      "note": "Exit 0: 0 new issue(s), 1 in baseline, and the warning \"2 entries of the baseline scan-baseline.json match no issue; run 'bal scan --prune-baseline' to remove them\". A warning never changes the exit code."
+    },
+    {
+      "name": "Day 4: --prune-baseline",
+      "run": "bal scan --prune-baseline",
+      "cwd": "pkg",
+      "note": "\"Removed 2 stale entries from the baseline at:\"; the file now has 1 entry. No warning."
+    },
+    {
+      "name": "--prune-baseline again",
+      "run": "bal scan --prune-baseline",
+      "cwd": "pkg",
+      "note": "\"The baseline has no entries to remove:\"; file unchanged."
+    },
+    {
+      "name": "Back to day 3 sources",
+      "edit": [
+        "use",
+        "../variants/new-secret"
+      ],
+      "cwd": "pkg"
+    },
+    {
+      "name": "--ignore-baseline",
+      "run": "bal scan --ignore-baseline --fail-on-severity=HIGH",
+      "cwd": "pkg",
+      "note": "The file is not read: every issue is printed, the summary is \"4 issue(s)\" with no \"in baseline\", no result carries baselineState, and the gate counts all of them (exit 1)."
+    },
+    {
+      "name": "--platform-triggered",
+      "run": "bal scan --platform-triggered",
+      "cwd": "pkg",
+      "note": "A platform tracks new code itself, so the baseline is ignored without a warning."
+    },
+    {
+      "name": "Accept the new findings with --create-baseline",
+      "run": "bal scan --create-baseline --fail-on-severity=HIGH",
+      "cwd": "pkg",
+      "note": "Exit 0. The entries replaced: the 2 fixed ones are back plus backupPassword, so accepting shows up as a diff of the committed file."
+    },
+    {
+      "name": "Scan after accepting",
+      "run": "bal scan --fail-on-severity=HIGH",
+      "cwd": "pkg",
+      "note": "0 new issue(s), 4 in baseline; exit 0."
+    }
+  ]
+}

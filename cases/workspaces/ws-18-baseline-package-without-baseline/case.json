@@ -1,0 +1,57 @@
+{
+  "title": "Workspace: a package without a baseline, and none at all",
+  "description": "In `with-baseline`, pkg_b has a Scan.toml of its own without [baseline], which replaces the workspace one as a whole. --create-baseline leaves pkg_b out with a warning, and its findings are new. In `no-baseline`, no package sets a baseline, so --create-baseline is a usage error. Needs scan 0.15.0+.",
+  "tags": [
+    "workspace",
+    "baseline",
+    "errors"
+  ],
+  "upstream": [
+    "BaselineTest#testWorkspacePackageWithoutBaseline",
+    "BEP 1498: Finding fingerprints and baseline adoption (ballerina-spec/beps/tool-scan/1498_scan_baseline.md)"
+  ],
+  "setup": [
+    {
+      "name": "Lock dependencies (with-baseline)",
+      "run": "bal build",
+      "cwd": "with-baseline"
+    },
+    {
+      "name": "Lock dependencies (no-baseline)",
+      "run": "bal build",
+      "cwd": "no-baseline"
+    }
+  ],
+  "steps": [
+    {
+      "name": "--create-baseline",
+      "run": "bal scan --create-baseline",
+      "cwd": "with-baseline",
+      "note": "Warning: pkg_b sets no baseline and is left out of --create-baseline. 2 new issue(s), 2 in baseline."
+    },
+    {
+      "name": "Scan",
+      "run": "bal scan",
+      "cwd": "with-baseline",
+      "note": "pkg_b's findings are new; the workspace report holds baselineState new on them, so every result has one."
+    },
+    {
+      "name": "No package sets a baseline: --create-baseline",
+      "run": "bal scan --create-baseline",
+      "cwd": "no-baseline",
+      "note": "Exit 2: --create-baseline needs a baseline file."
+    },
+    {
+      "name": "No package sets a baseline: --prune-baseline",
+      "run": "bal scan --prune-baseline",
+      "cwd": "no-baseline",
+      "note": "Exit 2."
+    },
+    {
+      "name": "No package sets a baseline: plain scan",
+      "run": "bal scan",
+      "cwd": "no-baseline",
+      "note": "As before baselines: \"4 issue(s)\", no baselineState."
+    }
+  ]
+}

@@ -1,0 +1,69 @@
+{
+  "title": "Baseline and @scan:Suppress",
+  "description": "The baseline is applied after suppressions and holds only unsuppressed findings. first() and second() hold the same line, so their findings share a hash: the suppressed one in first() is :1 and the baselined one in second() is :2. Removing first() renumbers it :1, and it stays baselined, since matching ignores the number. A suppressed finding is reported with baselineState new. Needs scan 0.15.0+.",
+  "tags": [
+    "package",
+    "baseline",
+    "suppression"
+  ],
+  "upstream": [
+    "BaselineTest#testSuppressedIssues",
+    "BEP 1498: Finding fingerprints and baseline adoption (ballerina-spec/beps/tool-scan/1498_scan_baseline.md)"
+  ],
+  "setup": [
+    {
+      "name": "Write the base sources",
+      "edit": [
+        "use",
+        "../variants/base"
+      ],
+      "cwd": "pkg"
+    },
+    {
+      "name": "Lock dependencies",
+      "run": "bal build",
+      "cwd": "pkg"
+    }
+  ],
+  "steps": [
+    {
+      "name": "--create-baseline",
+      "run": "bal scan --create-baseline",
+      "cwd": "pkg",
+      "note": "0 new issue(s), 2 in baseline, 1 suppressed. The file has 2 entries; the suppressed finding is not one of them."
+    },
+    {
+      "name": "SARIF",
+      "run": "bal scan --format=sarif",
+      "cwd": "pkg",
+      "note": "The suppressed result has baselineState new and a non-empty suppressions array; the other two are unchanged."
+    },
+    {
+      "name": "--ignore-suppressions",
+      "run": "bal scan --ignore-suppressions --fail-on-severity=LOW",
+      "cwd": "pkg",
+      "note": "1 new issue(s), 2 in baseline; exit 1. The count of the shared hash is now 2 against 1 entry, so the second in source order is new."
+    },
+    {
+      "name": "first() removed",
+      "edit": [
+        "use",
+        "../variants/without-first"
+      ],
+      "cwd": "pkg",
+      "note": "The import is removed too, as nothing uses it."
+    },
+    {
+      "name": "Scan after removing the suppressed one",
+      "run": "bal scan --fail-on-severity=LOW",
+      "cwd": "pkg",
+      "note": "second() is renumbered from :2 to :1 and is still baselined: 0 new issue(s), 2 in baseline, no warning."
+    },
+    {
+      "name": "--prune-baseline",
+      "run": "bal scan --prune-baseline",
+      "cwd": "pkg",
+      "note": "Nothing is stale, but the kept entry is rewritten with its current value (:1): \"Updated the fingerprints in the baseline at:\"."
+    }
+  ]
+}

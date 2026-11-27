@@ -1,6 +1,9 @@
 const UPSTREAM_REF = 'in-source-suppression';
 const UPSTREAM = `https://github.com/ballerina-platform/static-code-analysis-tool/blob/${UPSTREAM_REF}/scan-command/src`;
 const UTIL_TESTS = new Set(['ScanUtilsTest', 'ScanTomlWriterTest', 'DiagnosticLogTest']);
+// The baseline tests exist only on a local branch, so linking them to GitHub would 404
+const UNPUBLISHED_BRANCH = 'scan-baseline';
+const UNPUBLISHED_TESTS = new Set(['BaselineTest', 'BaselineFileTest', 'BaselineMatcherTest', 'FingerprintsTest']);
 const NOISE = /(^|\/)target\/(cache|bin|build|backup|resources)(\/|$)/;
 
 const state = {
@@ -75,6 +78,9 @@ function writeHash() {
 
 function upstreamLink(ref) {
   const m = ref.match(/^(\w+Test)#?(\w*)/);
+  if (m && UNPUBLISHED_TESTS.has(m[1])) {
+    return `<span title="Only on the local ${UNPUBLISHED_BRANCH} branch; not on GitHub yet">${esc(ref)} <span class="muted">(${UNPUBLISHED_BRANCH})</span></span>`;
+  }
   if (m) {
     const pkg = UTIL_TESTS.has(m[1]) ? 'utils' : 'internal';
     return `<a href="${UPSTREAM}/test/java/io/ballerina/scan/${pkg}/${m[1]}.java" target="_blank">${esc(ref)}</a>`;
@@ -136,7 +142,11 @@ function cellHtml(summary, isDiff, live) {
     return `<span class="dot ${c !== 0 ? 'nz' : err ? 'err' : ''}" title="exit ${c}${err ? ', printed errors' : ''}"></span>`;
   }).join('');
   const issues = summary.issueTotals.find((n) => n != null);
-  return `<div class="cell ${isDiff ? 'differs' : ''}"><div class="dots">${dots}</div>${issues != null ? `<span>${issues} issues</span>` : ''}</div>`;
+  const bl = (summary.baselineCounts || []).filter(Boolean);
+  const blTitle = bl.length ? ` title="per scan step with a baseline (new / in baseline): ${esc(bl.map(([n, b]) => `${n}/${b}`).join(' '))}"` : '';
+  const label = bl.length ? `<span${blTitle}>${bl[bl.length - 1][0]} new · ${bl[bl.length - 1][1]} bl</span>`
+    : issues != null ? `<span>${issues} issues</span>` : '';
+  return `<div class="cell ${isDiff ? 'differs' : ''}"><div class="dots">${dots}</div>${label}</div>`;
 }
 
 function filteredCases() {
@@ -206,7 +216,9 @@ function renderOverview() {
       if (!s) return '<td class="muted">-</td>';
       if (s.status !== 'ran') return `<td class="muted" title="${esc(s.skipReason)}">${esc(s.status)}</td>`;
       const errs = (s.errorFlags || []).filter(Boolean).length;
-      return `<td class="mono">exit ${esc(s.exitCodes.join(' '))}${errs ? ` <span class="chip exitnz">${errs} with errors</span>` : ''}<br><span class="muted">issues ${esc(s.issueTotals.map((n) => n ?? '-').join(' '))}</span></td>`;
+      const bl = (s.baselineCounts || []).some(Boolean)
+        ? `<br><span class="muted">new/baseline ${esc(s.baselineCounts.map((c) => (c ? `${c[0]}/${c[1]}` : '-')).join(' '))}</span>` : '';
+      return `<td class="mono">exit ${esc(s.exitCodes.join(' '))}${errs ? ` <span class="chip exitnz">${errs} with errors</span>` : ''}<br><span class="muted">issues ${esc(s.issueTotals.map((n) => n ?? '-').join(' '))}</span>${bl}</td>`;
     }).join('');
     return `<tr data-id="${esc(c.id)}"><td class="mono">${esc(c.id)}${differs(c.id) ? ' <span class="chip diff">differs</span>' : ''}</td>${cells}</tr>`;
   }).join('');
@@ -275,19 +287,223 @@ function obsHtml(step, record) {
     parts.push(`<div><span class="k">printed issues</span><b>${o.stdoutIssues.total}</b> (${esc(o.stdoutIssues.format)})${o.stdoutIssues.suppressed ? `, ${o.stdoutIssues.suppressed} suppressed` : ''}
       ${o.stdoutIsJson ? '<span class="chip">stdout is pure JSON</span>' : ''} <span class="rule-counts">${esc(ruleCounts(o.stdoutIssues.byRule))}</span></div>`);
   }
-  if (o.summaryLine) parts.push(`<div><span class="k">summary</span>${esc(o.summaryLine)}</div>`);
+  if (o.stdoutIssues?.fingerprinted || o.stdoutIssues?.withBaselineState) {
+    parts.push(`<div><span class="k">printed fingerprints</span>${fingerprintFactsHtml(o.stdoutIssues)}</div>`);
+  }
+  if (o.summaryLine) parts.push(`<div><span class="k">summary</span>${esc(o.summaryLine)} ${o.summary?.inBaseline != null ? summaryChips(o.summary) : ''}</div>`);
   for (const r of o.reports || []) {
     const link = `<a href="${fileUrl(`${record.workDir}/${r.path}`)}" target="_blank">${esc(r.path)}</a>`;
     if (r.html) {
       parts.push(`<div><span class="k">HTML report</span>${link}</div>`);
     } else {
       parts.push(`<div><span class="k">report</span>${link}${r.issues ? ` · ${r.issues.total} issues${r.issues.suppressed ? `, ${r.issues.suppressed} suppressed` : ''}
-        <span class="rule-counts">${esc(ruleCounts(r.issues.byRule))}</span>` : ''}</div>`);
+        <span class="rule-counts">${esc(ruleCounts(r.issues.byRule))}</span>${fingerprintFactsHtml(r.issues)}` : ''}</div>`);
     }
   }
+  const baselineParts = baselineObsHtml(step, record);
+  if (baselineParts) parts.push(baselineParts);
   if (o.warnings?.length) parts.push(`<div><span class="k">warnings</span>${o.warnings.map(esc).join('<br>')}</div>`);
   if (o.errors?.length) parts.push(`<div><span class="k">errors</span>${o.errors.map(esc).join('<br>')}</div>`);
   return parts.length ? `<div class="obs">${parts.join('')}</div>` : '';
+}
+
+// ---------------------------------------------------------------------------------------------------------------
+// Baseline and fingerprints (scan 0.15+): follow each finding across steps by its ballerinaScanHash/v1
+// ---------------------------------------------------------------------------------------------------------------
+const fpHash = (fp) => (fp ? fp.split(':')[0] : '');
+const fpShort = (fp) => (fp ? `${fp.slice(0, 8)}…:${fp.split(':')[1] ?? ''}` : '-');
+const entryCount = (n) => `${n} ${n === 1 ? 'entry' : 'entries'}`;
+
+function hasBaselineData(record) {
+  return (record.steps || []).some((s) => s.observations?.findings?.items?.some((f) => f.fp)
+    || s.observations?.baselines?.length || s.observations?.summary?.inBaseline != null);
+}
+
+function previousStep(record, step, pick) {
+  const earlier = record.steps.filter((s) => s.index < step.index && !s.setup && pick(s));
+  return earlier[earlier.length - 1] || null;
+}
+
+// Pairs the findings of two scans by fingerprint: unchanged, moved (same fingerprint, other line), renumbered
+// (same hash, other occurrence number) or new; findings of the earlier scan that are left over are gone.
+function compareFindings(prev, cur) {
+  const prevByFp = new Map(prev.filter((f) => f.fp).map((f) => [f.fp, f]));
+  const used = new Set();
+  const rows = cur.map((f) => {
+    if (!f.fp) return { f, delta: 'none' };
+    const same = prevByFp.get(f.fp);
+    if (same && !used.has(same.fp)) {
+      used.add(same.fp);
+      return { f, delta: same.line !== f.line || same.file !== f.file ? 'moved' : 'same', from: same };
+    }
+    const renumbered = prev.find((p) => p.fp && !used.has(p.fp) && fpHash(p.fp) === fpHash(f.fp) && !cur.some((c) => c.fp === p.fp));
+    if (renumbered) {
+      used.add(renumbered.fp);
+      return { f, delta: 'renumbered', from: renumbered };
+    }
+    return { f, delta: 'new' };
+  });
+  const gone = prev.filter((p) => p.fp && !used.has(p.fp));
+  const counts = { same: 0, moved: 0, renumbered: 0, new: 0 };
+  rows.forEach((r) => { if (r.delta in counts) counts[r.delta]++; });
+  return { rows, gone, counts };
+}
+
+function diffEntries(prev, cur) {
+  const before = new Set((prev || []).map((e) => e.fp));
+  const after = new Set((cur || []).map((e) => e.fp));
+  return {
+    added: (cur || []).filter((e) => !before.has(e.fp)),
+    removed: (prev || []).filter((e) => !after.has(e.fp)),
+  };
+}
+
+// The last known state of a baseline file before this step, from any earlier step that observed it.
+function previousBaseline(record, step, path) {
+  const prev = previousStep(record, step, (s) => s.observations?.baselines?.some((b) => b.path === path));
+  return prev?.observations.baselines.find((b) => b.path === path) || null;
+}
+
+const STATE_LABEL = { new: 'new', unchanged: 'in baseline' };
+const stateChip = (state) => (state ? `<span class="chip st-${esc(state)}">${esc(STATE_LABEL[state] || state)}</span>` : '');
+const DELTA_LABEL = { same: 'same', moved: 'same fp, moved', renumbered: 'renumbered', new: 'new fp', none: '-' };
+
+function deltaCounts(c, goneCount) {
+  const parts = [];
+  if (c.same) parts.push(`<span class="d-same">${c.same} same</span>`);
+  if (c.moved) parts.push(`<span class="d-moved">${c.moved} moved</span>`);
+  if (c.renumbered) parts.push(`<span class="d-moved">${c.renumbered} renumbered</span>`);
+  if (c.new) parts.push(`<span class="d-new">${c.new} new fp</span>`);
+  if (goneCount) parts.push(`<span class="d-gone">${goneCount} gone</span>`);
+  return parts.join(' · ') || '<span class="muted">no findings</span>';
+}
+
+function summaryChips(sum) {
+  if (!sum) return '';
+  if (sum.inBaseline == null) return `<span class="chip">${sum.newIssues} issue(s)</span>`;
+  return `<span class="chip ${sum.newIssues ? 'st-new' : 'exit0'}">${sum.newIssues} new</span> <span class="chip st-unchanged">${sum.inBaseline} in baseline</span>${sum.suppressed ? ` <span class="chip">${sum.suppressed} suppressed</span>` : ''}`;
+}
+
+function baselineObsHtml(step, record) {
+  const o = step.observations || {};
+  const parts = [];
+  for (const m of o.baselineMessages || []) parts.push(`<div><span class="k">baseline</span><b>${esc(m.replace(/:$/, ''))}</b></div>`);
+  if (o.staleEntries) parts.push(`<div><span class="k">stale entries</span><span class="chip st-new">${o.staleEntries} match no issue</span></div>`);
+  for (const b of o.baselines || []) {
+    const link = b.exists ? `<a href="${fileUrl(`${record.workDir}/${b.path}`)}" target="_blank">${esc(b.path)}</a>` : `<span class="mono">${esc(b.path)}</span>`;
+    let detail;
+    if (!b.exists) {
+      detail = '<span class="muted">does not exist</span>';
+    } else if (!b.valid) {
+      detail = `<span class="chip exitnz">${esc(b.problem)}</span>`;
+    } else {
+      const prev = previousBaseline(record, step, b.path);
+      const d = prev?.valid ? diffEntries(prev.entries, b.entries) : null;
+      detail = `${entryCount(b.entries.length)} · ${esc(b.fingerprint)} · written by ${esc(b.balScanVersion || '?')}${d ? ` · <span class="stat-ins">+${d.added.length}</span> <span class="stat-del">-${d.removed.length}</span> vs before` : ''}`;
+    }
+    parts.push(`<div><span class="k">baseline file</span>${link} ${b.change ? `<span class="chip ${b.change === 'deleted' ? 'exitnz' : 'setup'}">${esc(b.change)}</span>` : ''} ${detail}</div>`);
+  }
+  return parts.join('');
+}
+
+function fingerprintFactsHtml(issues) {
+  if (!issues?.fingerprinted && !issues?.withBaselineState) return '';
+  const bits = [`${issues.fingerprinted}/${issues.total} fingerprinted (${issues.uniqueFingerprints} distinct)`];
+  if (issues.withBaselineState) {
+    bits.push(`baselineState ${Object.entries(issues.baselineStates || {}).map(([k, n]) => `${k} ${n}`).join(', ')}`);
+  }
+  let warn = '';
+  if (issues.withBaselineState && issues.withBaselineState !== issues.total) warn += ' <span class="chip exitnz">baselineState on some results only</span>';
+  if (issues.withFingerprintsField) warn += ` <span class="chip exitnz">${issues.withFingerprintsField} with SARIF fingerprints</span>`;
+  if (issues.fingerprinted && issues.uniqueFingerprints !== issues.fingerprinted) warn += ' <span class="chip exitnz">duplicate fingerprints</span>';
+  return ` <span class="fp-facts">${bits.join(' · ')}</span>${warn}`;
+}
+
+function findingsTableHtml(step, record) {
+  const fs_ = step.observations?.findings;
+  if (!fs_?.items?.length) return '';
+  const prevStep = previousStep(record, step, (s) => s.observations?.findings?.items?.length);
+  const cmp = prevStep ? compareFindings(prevStep.observations.findings.items, fs_.items) : null;
+  const rows = (cmp ? cmp.rows : fs_.items.map((f) => ({ f }))).map(({ f, delta, from }) => {
+    const deltaCell = !cmp ? '' : `<td class="d-${esc(delta)}">${esc(DELTA_LABEL[delta])}${delta === 'moved' ? ` <span class="muted">line ${esc(from.line)} → ${esc(f.line)}</span>` : ''}${delta === 'renumbered' ? ` <span class="muted">:${esc(from.fp.split(':')[1])} → :${esc(f.fp.split(':')[1])}</span>` : ''}</td>`;
+    return `<tr><td class="mono" title="${esc(f.fp || '')}">${esc(fpShort(f.fp))}</td><td class="mono">${esc(f.rule)}</td>
+      <td class="mono">${esc(f.file)}:${esc(f.line)}</td><td>${stateChip(f.state)}${f.suppressed ? ' <span class="chip">suppressed</span>' : ''}</td>
+      ${deltaCell}<td class="mono snippet">${esc((f.snippet || '').split('\n')[0])}</td></tr>`;
+  }).join('');
+  const goneRows = (cmp?.gone || []).map((f) => `<tr class="gone"><td class="mono" title="${esc(f.fp)}">${esc(fpShort(f.fp))}</td><td class="mono">${esc(f.rule)}</td>
+    <td class="mono">${esc(f.file)}:${esc(f.line)}</td><td></td><td class="d-gone">gone</td><td class="mono snippet">${esc((f.snippet || '').split('\n')[0])}</td></tr>`).join('');
+  const head = `<tr><th>fingerprint</th><th>rule</th><th>location</th><th>state</th>${cmp ? `<th>vs step ${prevStep.index}</th>` : ''}<th>flagged text</th></tr>`;
+  return `<details class="findings"><summary>Findings and fingerprints · ${fs_.total} from ${esc(fs_.source)}${cmp ? ` · vs step ${prevStep.index}: ${deltaCounts(cmp.counts, cmp.gone.length)}` : ''}${fs_.truncated ? ' (truncated)' : ''}</summary>
+    <table class="fp-table">${head}${rows}${goneRows}</table></details>`;
+}
+
+function baselineEntriesHtml(step, record) {
+  const blocks = (step.observations?.baselines || []).filter((b) => b.valid).map((b) => {
+    const prev = previousBaseline(record, step, b.path);
+    const d = prev?.valid ? diffEntries(prev.entries, b.entries) : { added: b.entries, removed: [] };
+    if (!b.change && !d.added.length && !d.removed.length) return '';
+    const row = (e, cls, sign) => `<tr class="${cls}"><td class="sign">${sign}</td><td class="mono" title="${esc(e.fp)}">${esc(fpShort(e.fp))}</td><td class="mono">${esc(e.rule)}</td><td class="mono">${esc(e.pkg)}</td><td class="mono">${esc(e.file)}</td><td class="mono snippet">${esc(e.snippet)}</td></tr>`;
+    const addedFps = new Set(d.added.map((e) => e.fp));
+    const kept = b.entries.filter((e) => !addedFps.has(e.fp));
+    return `<details class="findings"><summary>Baseline ${esc(b.path)} · ${entryCount(b.entries.length)} · <span class="stat-ins">+${d.added.length}</span> <span class="stat-del">-${d.removed.length}</span>${prev ? '' : ' (first seen)'}</summary>
+      <table class="fp-table"><tr><th></th><th>fingerprint</th><th>rule</th><th>package</th><th>file</th><th>snippet (redacted)</th></tr>
+      ${d.added.map((e) => row(e, 'added', '+')).join('')}${d.removed.map((e) => row(e, 'removed', '-')).join('')}${kept.map((e) => row(e, '', ' ')).join('')}</table></details>`;
+  }).join('');
+  return blocks;
+}
+
+// One row per step: what the scan said, how the fingerprints moved and how the baseline file changed.
+function baselinePanelHtml(record, slot) {
+  if (!hasBaselineData(record)) return '';
+  const rows = record.steps.filter((s) => !s.setup).map((s) => {
+    const o = s.observations || {};
+    const anchor = `step-${slot}-${s.index}`;
+    if (s.edit) {
+      return `<tr class="edit-row" data-goto="${anchor}"><td>${s.index}</td><td colspan="5"><span class="chip setup">edit</span> ${esc(s.name)} <span class="muted mono">${esc(s.command.replace(/^edit /, ''))}</span></td></tr>`;
+    }
+    let fp = '<span class="muted">-</span>';
+    if (o.findings?.items?.length) {
+      const prev = previousStep(record, s, (x) => x.observations?.findings?.items?.length);
+      fp = prev ? (() => { const c = compareFindings(prev.observations.findings.items, o.findings.items); return deltaCounts(c.counts, c.gone.length); })()
+        : `${o.findings.total} findings`;
+    }
+    const bl = (o.baselines || []).map((b) => {
+      if (!b.exists) return `<span class="muted">${esc(b.path)}: missing</span>`;
+      if (!b.valid) return `<span class="chip exitnz">${esc(b.path)}: invalid</span>`;
+      const prev = previousBaseline(record, s, b.path);
+      const d = prev?.valid ? diffEntries(prev.entries, b.entries) : null;
+      const delta = d && (d.added.length || d.removed.length) ? ` <span class="stat-ins">+${d.added.length}</span> <span class="stat-del">-${d.removed.length}</span>` : '';
+      return `${entryCount(b.entries.length)}${delta}${b.change ? ` <span class="chip setup">${esc(b.change)}</span>` : ''}`;
+    }).join('<br>') || '<span class="muted">-</span>';
+    const errs = o.errors?.length ? `<span class="chip exitnz" title="${esc(o.errors.join('\n'))}">error</span>` : '';
+    return `<tr data-goto="${anchor}"><td>${s.index}</td><td>${esc(s.name)}</td>
+      <td><span class="chip ${s.exitCode === 0 ? 'exit0' : 'exitnz'}">exit ${esc(s.exitCode)}</span> ${errs}</td>
+      <td>${summaryChips(o.summary)}${o.staleEntries ? ` <span class="chip st-new">${o.staleEntries} stale</span>` : ''}</td><td>${fp}</td><td>${bl}</td></tr>`;
+  }).join('');
+  return `<details class="bl-panel" open><summary>Baseline &amp; fingerprints across steps</summary>
+    <p class="muted">Each scan's findings are paired with the previous scan's by <code>ballerinaScanHash/v1</code>: <span class="d-same">same</span> keeps its fingerprint and line, <span class="d-moved">moved</span> keeps its fingerprint on another line, <span class="d-new">new fp</span> has a fingerprint the previous scan did not, and <span class="d-gone">gone</span> is a previous fingerprint no longer reported. Click a row to jump to its step.</p>
+    <table class="fp-table bl-timeline"><tr><th>#</th><th>step</th><th>exit</th><th>summary</th><th>fingerprints vs previous scan</th><th>baseline file</th></tr>${rows}</table></details>`;
+}
+
+function editDiffHtml(step) {
+  if (!step.editDiff) return '';
+  return `<details class="files edit-diff" data-editdiff="${esc(step.editDiff)}"><summary>what the edit changed</summary><div class="file-diff muted">Loading...</div></details>`;
+}
+
+async function loadEditDiff(det) {
+  if (det.dataset.loaded) return;
+  det.dataset.loaded = '1';
+  try {
+    const diffs = await (await fetch(fileUrl(det.dataset.editdiff))).json();
+    const html = diffs.map((d) => {
+      const kind = d.before == null ? ' <span class="chip ins-chip">created</span>' : d.after == null ? ' <span class="chip del-chip">deleted</span>' : '';
+      const shown = (t) => (t ?? '').replace(/\r/g, '␍').replace(/^﻿/, '[BOM]');
+      return `<div class="edit-file"><div class="mono">${esc(d.path)}${kind}</div>${renderDiff(shown(d.before), shown(d.after)).html}</div>`;
+    }).join('') || '<div class="diff-empty">No text file changed.</div>';
+    det.querySelector('.file-diff').outerHTML = html;
+  } catch (err) {
+    det.querySelector('.file-diff').textContent = `Failed to load: ${err.message}`;
+  }
 }
 
 function filesHtml(step, record) {
@@ -314,7 +530,18 @@ function stepHtml(step, record, otherStep, slot) {
   const isDiff = otherStep && (otherStep.exitCode !== step.exitCode
     || (otherStep.observations?.stdoutIssues?.total ?? null) !== (step.observations?.stdoutIssues?.total ?? null));
   const id = `${slot}-${step.index}`;
-  return `<div class="step ${isDiff ? 'differs' : ''}">
+  if (step.edit) {
+    return `<div class="step edit-step" id="step-${esc(id)}">
+      <div class="step-head"><span class="n">${step.index}. ${esc(step.name)}</span>
+        <span class="chip setup">edit</span>${step.setup ? '<span class="chip setup">setup</span>' : ''}
+        ${step.exitCode !== 0 ? `<span class="chip exitnz">failed</span>` : ''}</div>
+      <div class="cmd"><span class="cwd">${esc(step.cwd)}&gt;</span> ${esc(step.command)}</div>
+      ${step.note ? `<div class="note">${esc(step.note)}</div>` : ''}
+      ${step.observations?.errors?.length ? `<div class="obs"><div><span class="k">errors</span>${step.observations.errors.map(esc).join('<br>')}</div></div>` : ''}
+      ${editDiffHtml(step)}
+    </div>`;
+  }
+  return `<div class="step ${isDiff ? 'differs' : ''}" id="step-${esc(id)}">
     <div class="step-head"><span class="n">${step.index}. ${esc(step.name)}</span>
       ${step.setup ? '<span class="chip setup">setup</span>' : ''}
       <span class="chip ${step.exitCode === 0 ? 'exit0' : 'exitnz'}">exit ${esc(step.exitCode)}${step.timedOut ? ' (timeout)' : ''}</span>
@@ -325,6 +552,8 @@ function stepHtml(step, record, otherStep, slot) {
     <div class="cmd"><span class="cwd">${esc(step.cwd)}&gt;</span> ${esc(step.command)}</div>
     ${step.note ? `<div class="note">${esc(step.note)}</div>` : ''}
     ${obsHtml(step, record)}
+    ${findingsTableHtml(step, record)}
+    ${baselineEntriesHtml(step, record)}
     ${filesHtml(step, record)}
     <div class="term-tabs" data-step="${esc(id)}">
       <button class="on" data-stream="combined">combined</button>
@@ -371,7 +600,7 @@ function recordColumn(record, other, slot = 'a', run = state.run) {
       : '<p class="chip exitnz">This case never finished (the run was interrupted).</p>')
     : '';
   const steps = record.steps.map((s) => stepHtml(s, record, other?.steps?.find((o) => o.index === s.index), slot)).join('');
-  return banner + links + steps + (running && isLive(run) ? liveStepHtml(record, slot) : '');
+  return banner + links + baselinePanelHtml(record, slot) + steps + (running && isLive(run) ? liveStepHtml(record, slot) : '');
 }
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -593,6 +822,17 @@ function stepSummaryText(step) {
   if (o.summaryLine) lines.push(`summary: ${o.summaryLine}`);
   for (const r of o.reports || []) {
     lines.push(`report: ${r.path}${r.issues ? ` (${r.issues.total} issues, ${r.issues.suppressed || 0} suppressed)` : ''}`);
+    if (r.issues?.fingerprinted || r.issues?.withBaselineState) {
+      lines.push(`  fingerprinted: ${r.issues.fingerprinted || 0}, distinct: ${r.issues.uniqueFingerprints || 0}, baselineState: ${JSON.stringify(r.issues.baselineStates || {})}`);
+    }
+  }
+  for (const f of o.findings?.items || []) {
+    lines.push(`finding: ${f.fp || '-'} ${f.rule} ${f.file}:${f.line}${f.state ? ` ${f.state}` : ''}${f.suppressed ? ' suppressed' : ''}`);
+  }
+  for (const m of o.baselineMessages || []) lines.push(`baseline: ${m}`);
+  for (const b of o.baselines || []) {
+    lines.push(`baseline file: ${b.path} ${!b.exists ? 'missing' : !b.valid ? `invalid (${b.problem})` : `${entryCount(b.entries.length)}`}${b.change ? ` [${b.change}]` : ''}`);
+    for (const e of b.entries || []) lines.push(`  entry: ${e.fp} ${e.rule} ${e.pkg} ${e.file}`);
   }
   for (const e of o.errors || []) lines.push(`error: ${e}`);
   for (const w of o.warnings || []) lines.push(`warning: ${w}`);
@@ -1013,6 +1253,10 @@ async function init() {
   $('#caseList').addEventListener('click', pick);
   $('#detail').addEventListener('click', (e) => {
     if (e.target.closest('.overview tr[data-id], .live-list li[data-id]')) pick(e);
+    const goto = e.target.closest('tr[data-goto]');
+    if (goto && !e.target.closest('a')) {
+      document.getElementById(goto.dataset.goto)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
     const vb = e.target.closest('.version-tabs button[data-v]');
     if (vb) {
       state.version = vb.dataset.v;
@@ -1060,6 +1304,7 @@ async function init() {
   // toggle does not bubble, so listen in the capture phase.
   $('#detail').addEventListener('toggle', (e) => {
     if (e.target.matches?.('details.diff-file') && e.target.open) loadFileDiff(e.target);
+    if (e.target.matches?.('details.edit-diff') && e.target.open) loadEditDiff(e.target);
   }, true);
   document.querySelector('.brand').addEventListener('click', () => { state.caseId = null; render(); });
   document.querySelector('.brand').style.cursor = 'pointer';

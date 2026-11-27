@@ -1,0 +1,138 @@
+{
+  "title": "Baseline options: conflicts, missing paths and files",
+  "description": "--create-baseline, --prune-baseline and --ignore-baseline select a mode, so any two together are a usage error (exit 2). --baseline-path only names the file. `configured` sets [baseline] path but has no file yet; `unconfigured` has no Scan.toml. A baseline is configured, never discovered: a scan-baseline.json that is not named by Scan.toml or --baseline-path changes nothing. Needs scan 0.15.0+.",
+  "tags": [
+    "package",
+    "baseline",
+    "errors"
+  ],
+  "upstream": [
+    "BaselineTest#testBaselineErrors",
+    "BaselineTest#testBaselinePaths",
+    "BEP 1498: Finding fingerprints and baseline adoption (ballerina-spec/beps/tool-scan/1498_scan_baseline.md)"
+  ],
+  "setup": [
+    {
+      "name": "Lock dependencies (configured)",
+      "run": "bal build",
+      "cwd": "configured"
+    },
+    {
+      "name": "Lock dependencies (unconfigured)",
+      "run": "bal build",
+      "cwd": "unconfigured"
+    }
+  ],
+  "steps": [
+    {
+      "name": "Configured file missing",
+      "run": "bal scan",
+      "cwd": "configured",
+      "note": "Exit 1 (a configuration error, not a usage error): baseline scan-baseline.json set in Scan.toml does not exist."
+    },
+    {
+      "name": "--create-baseline --prune-baseline",
+      "run": "bal scan --create-baseline --prune-baseline",
+      "cwd": "configured",
+      "note": "Exit 2 with the usage hint."
+    },
+    {
+      "name": "--create-baseline --ignore-baseline",
+      "run": "bal scan --create-baseline --ignore-baseline",
+      "cwd": "configured",
+      "note": "Exit 2 with the usage hint."
+    },
+    {
+      "name": "--prune-baseline --ignore-baseline",
+      "run": "bal scan --prune-baseline --ignore-baseline",
+      "cwd": "configured",
+      "note": "Exit 2 with the usage hint."
+    },
+    {
+      "name": "All three modes",
+      "run": "bal scan --create-baseline --prune-baseline --ignore-baseline",
+      "cwd": "configured",
+      "note": "\"--create-baseline, --prune-baseline and --ignore-baseline cannot be used together\". Exit 2 with the usage hint."
+    },
+    {
+      "name": "--baseline-path to a missing file",
+      "run": "bal scan --baseline-path=missing.json",
+      "cwd": "configured",
+      "note": "Exit 2 (usage error, unlike the configured file): add --create-baseline to create it."
+    },
+    {
+      "name": "--baseline-path=",
+      "run": "bal scan --baseline-path=",
+      "cwd": "configured",
+      "note": "Exit 2: invalid value '' for --baseline-path."
+    },
+    {
+      "name": "Create a folder",
+      "edit": [
+        "mkdir",
+        "baseline-dir"
+      ],
+      "cwd": "configured"
+    },
+    {
+      "name": "--baseline-path to a folder",
+      "run": "bal scan --baseline-path=baseline-dir",
+      "cwd": "configured",
+      "note": "Exit 2: baseline baseline-dir is a directory; set the path of a file."
+    },
+    {
+      "name": "--prune-baseline, configured file missing",
+      "run": "bal scan --prune-baseline",
+      "cwd": "configured",
+      "note": "Exit 1: pruning needs the file."
+    },
+    {
+      "name": "--ignore-baseline, configured file missing",
+      "run": "bal scan --ignore-baseline",
+      "cwd": "configured",
+      "note": "Exit 0: --ignore-baseline does not read or check the file."
+    },
+    {
+      "name": "--platform-triggered, configured file missing",
+      "run": "bal scan --platform-triggered",
+      "cwd": "configured",
+      "note": "The baseline is ignored for a platform-triggered scan, so the missing file is not an error."
+    },
+    {
+      "name": "No baseline set: --create-baseline",
+      "run": "bal scan --create-baseline",
+      "cwd": "unconfigured",
+      "note": "Exit 2: --create-baseline needs a baseline file; set 'path' in the [baseline] table of Scan.toml, or use --baseline-path=<path>."
+    },
+    {
+      "name": "No baseline set: --prune-baseline",
+      "run": "bal scan --prune-baseline",
+      "cwd": "unconfigured",
+      "note": "Exit 2 with the usage hint."
+    },
+    {
+      "name": "No baseline set: --ignore-baseline",
+      "run": "bal scan --ignore-baseline",
+      "cwd": "unconfigured",
+      "note": "Exit 0: a mode that does not write needs no file."
+    },
+    {
+      "name": "--create-baseline --baseline-path",
+      "run": "bal scan --create-baseline --baseline-path=scan-baseline.json",
+      "cwd": "unconfigured",
+      "note": "Creates scan-baseline.json, though Scan.toml does not exist."
+    },
+    {
+      "name": "--baseline-path alone",
+      "run": "bal scan --baseline-path=scan-baseline.json --fail-on-severity=LOW",
+      "cwd": "unconfigured",
+      "note": "0 new issue(s), 2 in baseline; exit 0."
+    },
+    {
+      "name": "Plain scan next to an unconfigured scan-baseline.json",
+      "run": "bal scan --fail-on-severity=LOW",
+      "cwd": "unconfigured",
+      "note": "Never discovered: the file is ignored, \"2 issue(s)\", and the gate counts both (exit 1)."
+    }
+  ]
+}

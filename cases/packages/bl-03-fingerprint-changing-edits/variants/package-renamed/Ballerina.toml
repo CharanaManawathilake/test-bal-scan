@@ -1,0 +1,4 @@
+[package]
+org = "playground"
+name = "changing_edits_renamed"
+version = "0.1.0"

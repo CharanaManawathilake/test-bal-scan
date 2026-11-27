@@ -1,0 +1,60 @@
+{
+  "title": "Baseline with an external analyzer and a platform plugin",
+  "description": "A finding from an external analyzer plugin gets a fingerprint with no change to the plugin, and can be baselined. Every finding, baselined or not, is still sent to the platforms in --platforms, which track new code themselves; the recorder writes each issue's partialFingerprints (Issue.partialFingerprints(), from 0.15.0) to platform-recorder-output.json. Rebuild the test plugins (npm run setup:plugins) to get the fingerprints in the recorder output. Needs scan 0.15.0+.",
+  "tags": [
+    "package",
+    "baseline",
+    "fingerprints",
+    "platform",
+    "analyzer"
+  ],
+  "upstream": [
+    "BaselineTest",
+    "BEP 1498: Finding fingerprints and baseline adoption (ballerina-spec/beps/tool-scan/1498_scan_baseline.md)"
+  ],
+  "requires": {
+    "plugins": true
+  },
+  "setup": [
+    {
+      "name": "Lock dependencies",
+      "run": "bal build",
+      "cwd": "pkg"
+    }
+  ],
+  "steps": [
+    {
+      "name": "--create-baseline",
+      "run": "bal scan --create-baseline",
+      "cwd": "pkg",
+      "note": "The entries include exampleOrg/example_module_static_code_analyzer:1 for main.bal."
+    },
+    {
+      "name": "--platforms=recorder",
+      "run": "bal scan --platforms=recorder",
+      "cwd": "pkg",
+      "note": "0 new issue(s); the recorder still receives every issue, each with its ballerinaScanHash/v1."
+    },
+    {
+      "name": "A new secret",
+      "edit": [
+        "copy",
+        "../variants/new-secret/main.bal",
+        "main.bal"
+      ],
+      "cwd": "pkg"
+    },
+    {
+      "name": "--platforms=recorder with a gate",
+      "run": "bal scan --platforms=recorder --fail-on-severity=HIGH",
+      "cwd": "pkg",
+      "note": "The platform runs first and gets every issue; then the gate fails on the 1 new HIGH finding (exit 1)."
+    },
+    {
+      "name": "--platform-triggered",
+      "run": "bal scan --platform-triggered --platforms=recorder",
+      "cwd": "pkg",
+      "note": "The baseline is ignored, without a warning."
+    }
+  ]
+}

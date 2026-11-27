@@ -1,0 +1,52 @@
+{
+  "title": "Single file: fingerprints and a baseline",
+  "description": "A standalone file gets fingerprints too; its package is the anonymous package of the file. A baseline can be given with --baseline-path; a Scan.toml next to the file is not read, as for every setting. With a baseline only the new issues are printed, and a single file saves no report, so the baselined findings are only counted in the summary. Recorded to see what the tool does; BEP 1498 does not single out standalone files. Needs scan 0.15.0+.",
+  "tags": [
+    "single-file",
+    "baseline",
+    "fingerprints"
+  ],
+  "upstream": [
+    "BEP 1498: Finding fingerprints and baseline adoption (ballerina-spec/beps/tool-scan/1498_scan_baseline.md)"
+  ],
+  "steps": [
+    {
+      "name": "Scan",
+      "run": "bal scan secrets.bal",
+      "note": "Printed issues carry partialFingerprints."
+    },
+    {
+      "name": "--create-baseline --baseline-path",
+      "run": "bal scan secrets.bal --create-baseline --baseline-path=scan-baseline.json"
+    },
+    {
+      "name": "--baseline-path",
+      "run": "bal scan secrets.bal --baseline-path=scan-baseline.json"
+    },
+    {
+      "name": "Lines added above",
+      "edit": [
+        "copy",
+        "variants/lines-above.bal",
+        "secrets.bal"
+      ]
+    },
+    {
+      "name": "--baseline-path after the edit",
+      "run": "bal scan secrets.bal --baseline-path=scan-baseline.json",
+      "note": "0 new issue(s), 2 in baseline: the fingerprints survive the edit."
+    },
+    {
+      "name": "--create-baseline with Scan.toml next to the file",
+      "run": "bal scan app.bal --create-baseline",
+      "cwd": "with-scan-toml",
+      "note": "A Scan.toml applies only to projects (see sf-09), so its [baseline] is not read: exit 2, --create-baseline needs a baseline file."
+    },
+    {
+      "name": "Scan with Scan.toml next to the file",
+      "run": "bal scan app.bal",
+      "cwd": "with-scan-toml",
+      "note": "No baseline: \"2 issue(s)\", no baselineState."
+    }
+  ]
+}

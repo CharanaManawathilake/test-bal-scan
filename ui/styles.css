@@ -232,3 +232,33 @@ table.diff td.del .sign { color: var(--del-text); } table.diff td.ins .sign { co
 table.diff tr.fold td { background: var(--accent-soft); padding: 2px 8px; }
 table.diff tr.fold button { font: inherit; font-size: 11.5px; color: var(--accent); background: none; border: 0; cursor: pointer; padding: 1px 0; }
 table.diff tr.fold button:hover { text-decoration: underline; }
+
+/* Baseline and fingerprints */
+.chip.st-new { background: var(--warn-soft); color: var(--warn); border-color: transparent; }
+.chip.st-unchanged { background: var(--ok-soft); color: var(--ok); border-color: transparent; }
+.fp-facts { color: var(--muted); font-size: 12px; }
+.d-same { color: var(--ok); }
+.d-moved, .d-renumbered { color: var(--accent); }
+.d-new { color: var(--warn); font-weight: 600; }
+.d-gone { color: var(--diff); font-weight: 600; }
+details.findings { padding: 6px 12px; border-bottom: 1px solid var(--border); font-size: 12.5px; }
+details.findings > summary { cursor: pointer; color: var(--muted); }
+.fp-table { border-collapse: collapse; width: 100%; font-size: 12px; margin: 6px 0; }
+.fp-table th, .fp-table td { border-bottom: 1px solid var(--border); padding: 3px 8px; text-align: left; vertical-align: top; }
+.fp-table th { color: var(--muted); font-weight: 600; }
+.fp-table td.snippet { white-space: pre; overflow: hidden; text-overflow: ellipsis; max-width: 360px; color: var(--muted); }
+.fp-table tr.gone td { opacity: .75; text-decoration: line-through; text-decoration-color: var(--diff); }
+.fp-table tr.gone td.d-gone { text-decoration: none; }
+.fp-table tr.added td { background: var(--ins-line); }
+.fp-table tr.removed td { background: var(--del-line); }
+.fp-table td.sign { font-family: var(--mono); width: 1.5em; }
+.bl-panel { background: var(--panel); border: 1px solid var(--accent); border-radius: 8px; padding: 8px 12px; margin-bottom: 12px; }
+.bl-panel > summary { cursor: pointer; font-weight: 600; color: var(--accent); }
+.bl-panel p { font-size: 12.5px; margin: 6px 0; }
+.bl-timeline tr[data-goto] { cursor: pointer; }
+.bl-timeline tr[data-goto]:hover td { background: var(--panel-2); }
+.bl-timeline tr.edit-row td { color: var(--muted); background: var(--panel-2); }
+.step.edit-step { border-style: dashed; }
+.step.edit-step .step-head { border-bottom: 0; }
+.edit-file { margin: 6px 0; }
+.edit-file > .mono { font-size: 12px; margin-bottom: 2px; }

@@ -1,0 +1,152 @@
+{
+  "title": "Fingerprints: edits that make a finding new",
+  "description": "The other half of the \"What changes the fingerprint\" table of BEP 1498: an identical line added, the flagged line edited, wrapped or joined, a space inside a string, and the file or the package renamed. Each edit starts from the base sources and is scanned against the baseline created first; [gate] failOnSeverity = \"LOW\" makes each scan with a new finding exit 1. The issues: ballerina:13 on the module-level password (line 1), on dbPassword and on the multi-line apiSecret template, and ballerina:1 on the checkpanic in main. A renamed rule ID also changes the fingerprint but cannot be shown with a fixture. Needs scan 0.15.0+.",
+  "tags": [
+    "package",
+    "baseline",
+    "fingerprints"
+  ],
+  "upstream": [
+    "BaselineTest#testIdenticalIssues",
+    "BaselineTest#testStaleEntriesAndPrune",
+    "FingerprintsTest",
+    "BEP 1498: Finding fingerprints and baseline adoption (ballerina-spec/beps/tool-scan/1498_scan_baseline.md)"
+  ],
+  "setup": [
+    {
+      "name": "Write the base sources",
+      "edit": [
+        "use",
+        "../variants/base"
+      ],
+      "cwd": "pkg"
+    },
+    {
+      "name": "Lock dependencies",
+      "run": "bal build",
+      "cwd": "pkg"
+    }
+  ],
+  "steps": [
+    {
+      "name": "--create-baseline",
+      "run": "bal scan --create-baseline",
+      "cwd": "pkg",
+      "note": "Saves 4 entries."
+    },
+    {
+      "name": "Identical line added above",
+      "edit": [
+        "use",
+        "../variants/identical-line-added"
+      ],
+      "cwd": "pkg"
+    },
+    {
+      "name": "Scan: identical line added above",
+      "run": "bal scan",
+      "cwd": "pkg",
+      "note": "A second `_ = checkpanic getResult();` above the first. Both have the same hash; matching is by count, so the LAST one in source order (:2) is new, whichever was added. Expect 1 new issue(s), 4 in baseline, exit 1."
+    },
+    {
+      "name": "Flagged line edited",
+      "edit": [
+        "use",
+        "../variants/flagged-line-edited"
+      ],
+      "cwd": "pkg"
+    },
+    {
+      "name": "Scan: flagged line edited",
+      "run": "bal scan",
+      "cwd": "pkg",
+      "note": "\"admin123\" -> \"admin1234\". The edited code is reviewed again: 1 new issue(s), 3 in baseline, and a warning that 1 entry matches no issue."
+    },
+    {
+      "name": "Space added inside a string",
+      "edit": [
+        "use",
+        "../variants/string-contents-spacing"
+      ],
+      "cwd": "pkg"
+    },
+    {
+      "name": "Scan: space added inside a string",
+      "run": "bal scan",
+      "cwd": "pkg",
+      "note": "\"hunter2\" -> \"hunter 2\". String contents are hashed as written, so this is a different fingerprint (if the rule still flags the value; a value that no longer looks like a secret only leaves a stale entry)."
+    },
+    {
+      "name": "Flagged line wrapped",
+      "edit": [
+        "use",
+        "../variants/wrapped"
+      ],
+      "cwd": "pkg"
+    },
+    {
+      "name": "Scan: flagged line wrapped",
+      "run": "bal scan",
+      "cwd": "pkg",
+      "note": "The literal moves to its own line, which is now the first flagged line, with different tokens: 1 new, 3 in baseline, 1 stale."
+    },
+    {
+      "name": "Flagged line joined with the next",
+      "edit": [
+        "use",
+        "../variants/joined"
+      ],
+      "cwd": "pkg"
+    },
+    {
+      "name": "Scan: flagged line joined with the next",
+      "run": "bal scan",
+      "cwd": "pkg",
+      "note": "`string dbPassword = \"admin123\"; return dbPassword;` on one line: different tokens, 1 new, 1 stale."
+    },
+    {
+      "name": "File renamed",
+      "edit": [
+        "use",
+        "../variants/base"
+      ],
+      "cwd": "pkg"
+    },
+    {
+      "name": "main.bal -> app.bal",
+      "edit": [
+        "move",
+        "main.bal",
+        "app.bal"
+      ],
+      "cwd": "pkg"
+    },
+    {
+      "name": "Scan: file renamed",
+      "run": "bal scan",
+      "cwd": "pkg",
+      "note": "The path is hashed, so all 4 findings are new and all 4 entries are stale."
+    },
+    {
+      "name": "Package renamed",
+      "edit": [
+        "use",
+        "../variants/package-renamed"
+      ],
+      "cwd": "pkg",
+      "note": "Ballerina.toml name changing_edits -> changing_edits_renamed."
+    },
+    {
+      "name": "Lock dependencies again",
+      "run": "bal build",
+      "cwd": "pkg",
+      "setup": true
+    },
+    {
+      "name": "Scan: package renamed",
+      "run": "bal scan",
+      "cwd": "pkg",
+      "note": "The organization and name are hashed, so all 4 findings are new. No stale warning: the old package's entries are outside the scope of the run (that package was not scanned), so they are unknown, not stale."
+    }
+  ]
+}

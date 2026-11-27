@@ -86,7 +86,8 @@ public class RecorderPlatformPlugin implements StaticCodeAnalysisPlatformPlugin 
                     .append(", \"file\": ").append(quote(range.fileName()))
                     .append(", \"startLine\": ").append(range.startLine().line() + 1)
                     .append(", \"endLine\": ").append(range.endLine().line() + 1)
-                    .append(", \"description\": ").append(quote(issue.rule().description())).append("}");
+                    .append(", \"description\": ").append(quote(issue.rule().description()))
+                    .append(partialFingerprintsJson(issue)).append("}");
             sep = ",\n";
         }
         json.append(issues.isEmpty() ? "]\n}\n" : "\n  ]\n}\n");
@@ -98,6 +99,27 @@ public class RecorderPlatformPlugin implements StaticCodeAnalysisPlatformPlugin 
         }
         System.out.println("[" + platform() + " platform plugin] received " + issues.size() + " issue(s), args "
                 + platformArgs + ", initiatedByPlatform=" + initiatedByPlatform + " -> " + out);
+    }
+
+    // Issue.partialFingerprints() exists from scan 0.15.0; reflection keeps the plugin working with older versions
+    static String partialFingerprintsJson(Issue issue) {
+        Object value;
+        try {
+            value = issue.getClass().getMethod("partialFingerprints").invoke(issue);
+        } catch (ReflectiveOperationException | RuntimeException e) {
+            return "";
+        }
+        if (!(value instanceof Map<?, ?> fingerprints)) {
+            return "";
+        }
+        StringBuilder json = new StringBuilder(", \"partialFingerprints\": {");
+        String sep = "";
+        for (Map.Entry<?, ?> entry : new TreeMap<>(fingerprints).entrySet()) {
+            json.append(sep).append(quote(String.valueOf(entry.getKey()))).append(": ")
+                    .append(quote(String.valueOf(entry.getValue())));
+            sep = ", ";
+        }
+        return json.append("}").toString();
     }
 
     static String quote(String value) {

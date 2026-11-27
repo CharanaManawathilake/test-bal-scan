@@ -1,0 +1,70 @@
+{
+  "title": "Workspace baseline: one file, entries per package",
+  "description": "The workspace Scan.toml sets one baseline for both packages. pkg_a and pkg_b have the same main.bal, so the same path and line in two packages: the package is hashed, so the 4 fingerprints differ. Paths are relative to the package root, so a package gets the same fingerprints alone and in the workspace. From the CLI a workspace member is always scanned with the whole workspace, so the scope of a package scanned alone is left to the unit tests. Each package is gated on its own new findings. Needs scan 0.15.0+.",
+  "tags": [
+    "workspace",
+    "baseline",
+    "gate"
+  ],
+  "upstream": [
+    "BaselineTest#testWorkspaceBaseline",
+    "BEP 1498: Finding fingerprints and baseline adoption (ballerina-spec/beps/tool-scan/1498_scan_baseline.md)"
+  ],
+  "steps": [
+    {
+      "name": "--create-baseline",
+      "run": "bal scan --create-baseline",
+      "note": "Saved 4 entries; 2 for playground/ws_baseline_a and 2 for playground/ws_baseline_b, each with filePath main.bal."
+    },
+    {
+      "name": "Scan",
+      "run": "bal scan --fail-on-severity=LOW",
+      "note": "0 new issue(s), 4 in baseline."
+    },
+    {
+      "name": "One package from the root",
+      "run": "bal scan pkg_a --fail-on-severity=LOW",
+      "note": "Recorded with 0.15.0-SNAPSHOT: a workspace member is always scanned with its workspace from the CLI, so both packages run and the summary is 0 new issue(s), 4 in baseline. A package scanned alone against the workspace baseline (BaselineTest#testWorkspaceBaseline loads it without its workspace) cannot be reached from the CLI."
+    },
+    {
+      "name": "Inside a package",
+      "run": "bal scan --fail-on-severity=LOW",
+      "cwd": "pkg_a",
+      "note": "Also scans the whole workspace: 4 in baseline."
+    },
+    {
+      "name": "pkg_a fixed",
+      "edit": [
+        "copy",
+        "../variants/fixed/main.bal",
+        "main.bal"
+      ],
+      "cwd": "pkg_a"
+    },
+    {
+      "name": "--prune-baseline in pkg_a",
+      "run": "bal scan --prune-baseline",
+      "cwd": "pkg_a",
+      "note": "Removed 2 stale entries (pkg_a's). pkg_b is scanned too, and its 2 entries still match, so they are kept."
+    },
+    {
+      "name": "pkg_b gets a new secret",
+      "edit": [
+        "copy",
+        "../variants/new-secret/main.bal",
+        "main.bal"
+      ],
+      "cwd": "pkg_b"
+    },
+    {
+      "name": "Workspace gate",
+      "run": "bal scan --fail-on-severity=HIGH",
+      "note": "1 package failed the gate: pkg_b, with 1 new HIGH finding. pkg_a has none."
+    },
+    {
+      "name": "Workspace SARIF",
+      "run": "bal scan --format=sarif",
+      "note": "The workspace report holds baselineState on every result."
+    }
+  ]
+}

@@ -1,0 +1,46 @@
+{
+  "title": "Fingerprints in JSON, SARIF, HTML and the printed issues (no baseline)",
+  "description": "Without a baseline, the only change in 0.15.0 is that every issue carries partialFingerprints with the key ballerinaScanHash/v1, and no result carries baselineState. Two calls on one line get :1 and :2; the same line in taskOne and taskTwo also share a hash (:1, :2), since the enclosing function is not hashed. tests/main_test.bal gets its own path in the hash. Fingerprints are computed before rule selection and --exclude-tests, so leaving issues out never changes the fingerprints of the others: compare the Findings tables between steps.",
+  "tags": [
+    "package",
+    "fingerprints"
+  ],
+  "upstream": [
+    "BaselineTest#testSarifReport",
+    "BaselineTest#testIgnoreBaseline",
+    "FingerprintsTest",
+    "BEP 1498: Finding fingerprints and baseline adoption (ballerina-spec/beps/tool-scan/1498_scan_baseline.md)"
+  ],
+  "steps": [
+    {
+      "name": "Scan",
+      "run": "bal scan",
+      "note": "Each printed issue and each issue in scan_results.json has partialFingerprints; 6 issues, 6 distinct values."
+    },
+    {
+      "name": "Same scan again",
+      "run": "bal scan",
+      "note": "Determinism: scan_results.json is rewritten with identical content, so no file change is listed."
+    },
+    {
+      "name": "SARIF",
+      "run": "bal scan --format=sarif",
+      "note": "partialFingerprints on every result, never `fingerprints` (SARIF 3.27.16: a direct producer should not write it), no baselineState."
+    },
+    {
+      "name": "HTML report",
+      "run": "bal scan --scan-report",
+      "note": "Open the HTML report: the fingerprint is shown in the details of an issue."
+    },
+    {
+      "name": "--exclude-rules=ballerina:13",
+      "run": "bal scan --exclude-rules=ballerina:13",
+      "note": "The ballerina:1 fingerprints are the same as in step 1."
+    },
+    {
+      "name": "--exclude-tests",
+      "run": "bal scan --exclude-tests",
+      "note": "The fingerprints of main.bal are the same as in step 1."
+    }
+  ]
+}

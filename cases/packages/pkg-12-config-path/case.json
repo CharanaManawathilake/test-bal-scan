@@ -72,7 +72,7 @@
       "cwd": "no-config-path"
     },
     {
-      "name": "Remote configPath (gist URL)",
+      "name": "Remote configPath (raw GitHub URL)",
       "run": "bal scan",
       "cwd": "remote"
     },

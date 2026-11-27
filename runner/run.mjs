@@ -14,6 +14,7 @@ import {
 import { runCommand, stripAnsi, mask } from './lib/proc.mjs';
 import { snapshot, diffSnapshots, copyDir } from './lib/snapshot.mjs';
 import { observeStep } from './lib/observe.mjs';
+import { runEdit, editCommand } from './lib/edit.mjs';
 import {
   CENTRALS, parseVersionSpec, switchScanVersion, activeScanVersion, activeToolFingerprint, withCentral,
   parseDistMap, distributionFor, activeDistribution, switchDistribution,
@@ -163,7 +164,8 @@ async function runCase(testCase, ctx, out) {
 
   for (let i = 0; i < allSteps.length; i++) {
     const step = allSteps[i];
-    const command = interpolate(step.run, vars).replace(/^bal(?=\s|$)/, ctx.bal);
+    const editArgs = Array.isArray(step.edit) ? step.edit.map((a) => interpolate(String(a), vars)) : null;
+    const command = editArgs ? editCommand(editArgs) : interpolate(step.run, vars).replace(/^bal(?=\s|$)/, ctx.bal);
     const cwd = path.join(workDir, interpolate(step.cwd || '.', vars));
     fs.mkdirSync(cwd, { recursive: true });
     const env = { ...ctx.env };
@@ -184,22 +186,30 @@ async function runCase(testCase, ctx, out) {
       liveOutput: posix(path.relative(ROOT, liveFile)),
     };
     saveRecord();
-    const result = await runCommand(command, {
-      cwd, env, timeoutMs: ctx.timeoutMs, secrets: ctx.secrets,
-      onData: (text) => fs.appendFileSync(liveFile, text),
-    });
+    const result = editArgs
+      ? runEdit(editArgs, { cwd, workDir })
+      : await runCommand(command, {
+        cwd, env, timeoutMs: ctx.timeoutMs, secrets: ctx.secrets,
+        onData: (text) => fs.appendFileSync(liveFile, text),
+      });
     fs.rmSync(liveFile, { force: true });
     const changes = diffSnapshots(before, snapshot(workDir));
+    if (result.fileDiffs) {
+      fs.writeFileSync(path.join(stepDir, 'edit-diff.json'), JSON.stringify(result.fileDiffs, null, 2));
+    }
     fs.writeFileSync(path.join(stepDir, 'stdout.txt'), stripAnsi(result.stdout));
     fs.writeFileSync(path.join(stepDir, 'stderr.txt'), stripAnsi(result.stderr));
     fs.writeFileSync(path.join(stepDir, 'combined.txt'), stripAnsi(result.combined));
-    const observations = observeStep(result, changes, workDir);
+    const observations = editArgs ? { errors: result.stderr ? [result.stderr.trim()] : [], warnings: [] }
+      : observeStep(result, changes, workDir, cwd);
     out(`exit ${result.exitCode}${result.timedOut ? ' (timeout)' : ''} in ${(result.durationMs / 1000).toFixed(1)}s\n`);
 
     record.steps.push({
       index: i + 1,
       name: step.name || command,
       setup: Boolean(step.setup),
+      edit: Boolean(editArgs),
+      editDiff: result.fileDiffs ? posix(path.relative(ROOT, path.join(stepDir, 'edit-diff.json'))) : undefined,
       note: step.note || '',
       command: result.command,
       cwd: posix(path.relative(workDir, cwd)) || '.',
@@ -217,7 +227,7 @@ async function runCase(testCase, ctx, out) {
     const shownCwd = posix(path.relative(ctx.runDir, cwd));
     terminal.push(
       '',
-      `--- step ${i + 1}${step.setup ? ' [setup]' : ''}: ${step.name || command}`,
+      `--- step ${i + 1}${step.setup ? ' [setup]' : ''}${editArgs ? ' [edit]' : ''}: ${step.name || command}`,
       step.note ? `    note: ${step.note}` : '',
       `${shownCwd}> ${result.command}`,
       stripAnsi(result.combined).replace(/\s+$/, ''),
@@ -236,7 +246,7 @@ async function runCase(testCase, ctx, out) {
 }
 
 function caseSummary(record) {
-  const scanSteps = record.steps.filter((s) => !s.setup);
+  const scanSteps = record.steps.filter((s) => !s.setup && !s.edit);
   return {
     id: record.id,
     title: record.title,
@@ -250,6 +260,9 @@ function caseSummary(record) {
     errorFlags: scanSteps.map((s) => (s.observations?.errors?.length || 0) > 0),
     setupErrors: record.steps.filter((s) => s.setup && s.observations?.errors?.length).length,
     issueTotals: scanSteps.map((s) => s.observations?.stdoutIssues?.total ?? null),
+    // Steps that ran with a baseline: [new, in baseline] from the summary line, null otherwise
+    baselineCounts: scanSteps.map((s) => (s.observations?.summary?.inBaseline != null
+      ? [s.observations.summary.newIssues, s.observations.summary.inBaseline] : null)),
     durationMs: record.steps.reduce((n, s) => n + s.durationMs, 0),
   };
 }

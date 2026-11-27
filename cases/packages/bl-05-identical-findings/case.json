@@ -1,0 +1,121 @@
+{
+  "title": "Matching identical findings by count",
+  "description": "Two identical `_ = checkpanic getResult();` lines get the same hash (:1, :2). Matching uses the hash and the number of entries, never the occurrence number: with k entries, the first k unsuppressed findings in source order are baselined and the rest are new; with more entries than findings, the entries with the highest numbers are stale. The same line in another function is the same finding. A replacement (one removed, one added) is not detected; BEP 1498 documents this. Needs scan 0.15.0+.",
+  "tags": [
+    "package",
+    "baseline",
+    "fingerprints"
+  ],
+  "upstream": [
+    "BaselineTest#testIdenticalIssues",
+    "BaselineMatcherTest",
+    "BEP 1498: Finding fingerprints and baseline adoption (ballerina-spec/beps/tool-scan/1498_scan_baseline.md)"
+  ],
+  "setup": [
+    {
+      "name": "Write the base sources",
+      "edit": [
+        "use",
+        "../variants/base"
+      ],
+      "cwd": "pkg"
+    },
+    {
+      "name": "Lock dependencies",
+      "run": "bal build",
+      "cwd": "pkg"
+    }
+  ],
+  "steps": [
+    {
+      "name": "--create-baseline",
+      "run": "bal scan --create-baseline",
+      "cwd": "pkg",
+      "note": "Saves <hash>:1 and <hash>:2."
+    },
+    {
+      "name": "One more identical line",
+      "edit": [
+        "use",
+        "../variants/one-more"
+      ],
+      "cwd": "pkg"
+    },
+    {
+      "name": "Scan: 3 identical, 2 entries",
+      "run": "bal scan",
+      "cwd": "pkg",
+      "note": "1 new issue(s), 2 in baseline. The last one in source order (:3) is printed as new, whichever line was added; exit 1 from [gate]."
+    },
+    {
+      "name": "Identical line in another function",
+      "edit": [
+        "use",
+        "../variants/other-function"
+      ],
+      "cwd": "pkg"
+    },
+    {
+      "name": "Scan: same line in another function",
+      "run": "bal scan",
+      "cwd": "pkg",
+      "note": "The enclosing function is not hashed: still the same hash, so 1 new (the one in later(), last in source order)."
+    },
+    {
+      "name": "One removed",
+      "edit": [
+        "use",
+        "../variants/one-removed"
+      ],
+      "cwd": "pkg"
+    },
+    {
+      "name": "Scan: 1 identical, 2 entries",
+      "run": "bal scan",
+      "cwd": "pkg",
+      "note": "0 new issue(s), 1 in baseline, and 1 stale entry (the one with the highest number, :2, whichever line was removed)."
+    },
+    {
+      "name": "One removed, another added elsewhere",
+      "edit": [
+        "use",
+        "../variants/replaced"
+      ],
+      "cwd": "pkg"
+    },
+    {
+      "name": "Scan: a replacement",
+      "run": "bal scan",
+      "cwd": "pkg",
+      "note": "Known limitation: the count is unchanged, so the added finding is unchanged and nothing is stale. Exit 0."
+    },
+    {
+      "name": "Back to one line",
+      "edit": [
+        "use",
+        "../variants/one-removed"
+      ],
+      "cwd": "pkg"
+    },
+    {
+      "name": "--prune-baseline",
+      "run": "bal scan --prune-baseline",
+      "cwd": "pkg",
+      "note": "Removes :2; the baseline keeps :1."
+    },
+    {
+      "name": "Back to the base sources",
+      "edit": [
+        "use",
+        "../variants/base"
+      ],
+      "cwd": "pkg"
+    },
+    {
+      "name": "Scan: 2 identical, 1 entry",
+      "run": "bal scan",
+      "cwd": "pkg",
+      "note": "1 new issue(s), 1 in baseline: the second line (:2) is new again."
+    }
+  ]
+}

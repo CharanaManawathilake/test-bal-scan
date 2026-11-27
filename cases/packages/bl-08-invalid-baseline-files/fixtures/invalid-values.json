@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "fingerprint": "ballerinaScanHash/v1",
+  "balScanVersion": 15,
+  "issues": [
+    {
+      "fingerprint": "ABC:0",
+      "ruleId": 13,
+      "package": "playground/invalid_baselines",
+      "filePath": "main.bal",
+      "snippet": "    string password = \"***\";"
+    },
+    "not an entry"
+  ]
+}

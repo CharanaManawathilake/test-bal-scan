@@ -5,3 +5,5 @@ sonar.token=${SONAR_TOKEN}
 sonar.projectBaseDir=${WORK_DIR}/hello_app
 sonar.sources=.
 sonar.exclusions=**/target/**
+# The work dir lives under the git-ignored results/, so SCM exclusions would hide every file
+sonar.scm.exclusions.disabled=true

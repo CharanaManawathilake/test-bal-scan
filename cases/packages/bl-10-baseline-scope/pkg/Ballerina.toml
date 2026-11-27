@@ -1,0 +1,4 @@
+[package]
+org = "playground"
+name = "baseline_scope"
+version = "0.1.0"

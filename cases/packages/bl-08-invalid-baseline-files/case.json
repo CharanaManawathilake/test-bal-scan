@@ -1,0 +1,208 @@
+{
+  "title": "Invalid baseline files",
+  "description": "Each broken file from fixtures/ is copied to scan-baseline.json and scanned. A file that is not valid JSON, has an unknown version or field, a missing field, an invalid value, a duplicate field or fingerprint, or names a fingerprint version the tool does not support is a configuration error (exit 1), reported at its line and column. Needs scan 0.15.0+.",
+  "tags": [
+    "package",
+    "baseline",
+    "errors"
+  ],
+  "upstream": [
+    "BaselineFileTest",
+    "BaselineTest#testBaselineErrors",
+    "BEP 1498: Finding fingerprints and baseline adoption (ballerina-spec/beps/tool-scan/1498_scan_baseline.md)"
+  ],
+  "setup": [
+    {
+      "name": "Lock dependencies",
+      "run": "bal build",
+      "cwd": "pkg"
+    }
+  ],
+  "steps": [
+    {
+      "name": "Use invalid-json.json",
+      "edit": [
+        "copy",
+        "../fixtures/invalid-json.json",
+        "scan-baseline.json"
+      ],
+      "cwd": "pkg"
+    },
+    {
+      "name": "Scan with invalid-json.json",
+      "run": "bal scan",
+      "cwd": "pkg",
+      "note": "Exit 1: \"scan-baseline.json has 1 error\", with the line and column of the JSON syntax error."
+    },
+    {
+      "name": "Use not-an-object.json",
+      "edit": [
+        "copy",
+        "../fixtures/not-an-object.json",
+        "scan-baseline.json"
+      ],
+      "cwd": "pkg"
+    },
+    {
+      "name": "Scan with not-an-object.json",
+      "run": "bal scan",
+      "cwd": "pkg",
+      "note": "Expected an object with 'version', 'fingerprint' and 'issues'."
+    },
+    {
+      "name": "Use version-3.json",
+      "edit": [
+        "copy",
+        "../fixtures/version-3.json",
+        "scan-baseline.json"
+      ],
+      "cwd": "pkg"
+    },
+    {
+      "name": "Scan with version-3.json",
+      "run": "bal scan",
+      "cwd": "pkg",
+      "note": "unsupported baseline version 3; this version of the scan tool reads version 1. The other fields are not checked, as another format version may mean something else."
+    },
+    {
+      "name": "Use fingerprint-v2.json",
+      "edit": [
+        "copy",
+        "../fixtures/fingerprint-v2.json",
+        "scan-baseline.json"
+      ],
+      "cwd": "pkg"
+    },
+    {
+      "name": "Scan with fingerprint-v2.json",
+      "run": "bal scan",
+      "cwd": "pkg",
+      "note": "unsupported fingerprint version 'ballerinaScanHash/v2'."
+    },
+    {
+      "name": "Use missing-fields.json",
+      "edit": [
+        "copy",
+        "../fixtures/missing-fields.json",
+        "scan-baseline.json"
+      ],
+      "cwd": "pkg"
+    },
+    {
+      "name": "Scan with missing-fields.json",
+      "run": "bal scan",
+      "cwd": "pkg",
+      "note": "One error for each missing field: version, fingerprint, issues."
+    },
+    {
+      "name": "Use unknown-fields.json",
+      "edit": [
+        "copy",
+        "../fixtures/unknown-fields.json",
+        "scan-baseline.json"
+      ],
+      "cwd": "pkg"
+    },
+    {
+      "name": "Scan with unknown-fields.json",
+      "run": "bal scan",
+      "cwd": "pkg",
+      "note": "Unknown field at the top level and in an entry, each at its line and column."
+    },
+    {
+      "name": "Use invalid-values.json",
+      "edit": [
+        "copy",
+        "../fixtures/invalid-values.json",
+        "scan-baseline.json"
+      ],
+      "cwd": "pkg"
+    },
+    {
+      "name": "Scan with invalid-values.json",
+      "run": "bal scan",
+      "cwd": "pkg",
+      "note": "Invalid values: balScanVersion as a number, a fingerprint that is not 32 hex digits and a number >= 1, a ruleId as a number, and an entry that is not an object."
+    },
+    {
+      "name": "Use duplicate-field.json",
+      "edit": [
+        "copy",
+        "../fixtures/duplicate-field.json",
+        "scan-baseline.json"
+      ],
+      "cwd": "pkg"
+    },
+    {
+      "name": "Scan with duplicate-field.json",
+      "run": "bal scan",
+      "cwd": "pkg",
+      "note": "duplicate field 'version'."
+    },
+    {
+      "name": "Use duplicate-entry.json",
+      "edit": [
+        "copy",
+        "../fixtures/duplicate-entry.json",
+        "scan-baseline.json"
+      ],
+      "cwd": "pkg"
+    },
+    {
+      "name": "Scan with duplicate-entry.json",
+      "run": "bal scan",
+      "cwd": "pkg",
+      "note": "duplicate fingerprint: a value is unique in the file."
+    },
+    {
+      "name": "Use hand-written.json",
+      "edit": [
+        "copy",
+        "../fixtures/hand-written.json",
+        "scan-baseline.json"
+      ],
+      "cwd": "pkg"
+    },
+    {
+      "name": "Scan with a valid, hand-written baseline",
+      "run": "bal scan",
+      "cwd": "pkg",
+      "note": "Valid, but its one entry matches no finding (only the fingerprint is matched, never ruleId or snippet): 2 new issue(s), 0 in baseline, and 1 stale entry."
+    },
+    {
+      "name": "Back to invalid JSON",
+      "edit": [
+        "copy",
+        "../fixtures/invalid-json.json",
+        "scan-baseline.json"
+      ],
+      "cwd": "pkg"
+    },
+    {
+      "name": "--ignore-baseline with a broken file",
+      "run": "bal scan --ignore-baseline",
+      "cwd": "pkg",
+      "note": "Exit 0: the file is not read, so it cannot block a run that ignores it."
+    },
+    {
+      "name": "--create-baseline with a broken file",
+      "run": "bal scan --create-baseline",
+      "cwd": "pkg",
+      "note": "Exit 1: --create-baseline keeps the entries outside its scope, so it cannot replace a file it cannot read. Deleting the file starts over."
+    },
+    {
+      "name": "Delete the broken file",
+      "edit": [
+        "delete",
+        "scan-baseline.json"
+      ],
+      "cwd": "pkg"
+    },
+    {
+      "name": "--create-baseline after deleting it",
+      "run": "bal scan --create-baseline",
+      "cwd": "pkg",
+      "note": "Saved 2 entries."
+    }
+  ]
+}

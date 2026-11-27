@@ -1,0 +1,52 @@
+{
+  "title": "Redacted snippets in the baseline file",
+  "description": "A baselined finding can be a hardcoded secret, and the baseline is committed. So each entry's snippet is the first flagged line as written, with the content of every string, string template, numeric and byte array literal replaced by ***. The snippet is for review only; the fingerprint is computed from the literals as written. So changing port = 8080 to 8081 on a flagged line makes that finding new, though its redacted snippet is identical. SARIF region.snippet still holds the literal. Needs scan 0.15.0+.",
+  "tags": [
+    "package",
+    "baseline",
+    "fingerprints",
+    "secrets"
+  ],
+  "upstream": [
+    "BaselineTest#testCreateAndCheck",
+    "FingerprintsTest",
+    "BEP 1498: Finding fingerprints and baseline adoption (ballerina-spec/beps/tool-scan/1498_scan_baseline.md)"
+  ],
+  "setup": [
+    {
+      "name": "Lock dependencies",
+      "run": "bal build",
+      "cwd": "pkg"
+    }
+  ],
+  "steps": [
+    {
+      "name": "--create-baseline",
+      "run": "bal scan --create-baseline",
+      "cwd": "pkg",
+      "note": "Open scan-baseline.json (or the Baseline panel): no secret value appears in any snippet."
+    },
+    {
+      "name": "SARIF",
+      "run": "bal scan --format=sarif",
+      "cwd": "pkg",
+      "note": "region.snippet.text holds the flagged text as written; only the baseline is redacted."
+    },
+    {
+      "name": "A number on a flagged line changed",
+      "edit": [
+        "copy",
+        "../variants/port-changed/main.bal",
+        "main.bal"
+      ],
+      "cwd": "pkg",
+      "note": "port = 8080 -> 8081, on the line of the secretBytes finding."
+    },
+    {
+      "name": "Scan",
+      "run": "bal scan",
+      "cwd": "pkg",
+      "note": "The line's tokens changed: 1 new issue(s) and 1 stale entry, though both snippets read the same."
+    }
+  ]
+}

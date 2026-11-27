@@ -1,0 +1,4 @@
+[package]
+org = "playground"
+name = "baseline_invalid_config"
+version = "0.1.0"

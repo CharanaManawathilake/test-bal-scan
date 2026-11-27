@@ -1,0 +1,5 @@
+[baseline]
+path = "scan-baseline.json"
+
+[gate]
+failOnSeverity = "LOW"

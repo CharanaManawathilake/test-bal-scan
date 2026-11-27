@@ -4,3 +4,5 @@ sonar.host.url=${SONAR_HOST_URL}
 sonar.token=${SONAR_TOKEN}
 sonar.sources=.
 sonar.exclusions=target/**
+# The work dir lives under the git-ignored results/, so SCM exclusions would hide every file
+sonar.scm.exclusions.disabled=true

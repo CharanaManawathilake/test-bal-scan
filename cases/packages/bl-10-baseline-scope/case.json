@@ -1,0 +1,67 @@
+{
+  "title": "Scope of a run: rule filters and --exclude-tests write only what they see",
+  "description": "An entry is in the scope of a run when its package is scanned, its rule is selected and its file is analyzed. A run filtered to some rules or without the tests treats the other entries as unknown, not stale: --create-baseline replaces only the entries in scope, --prune-baseline removes only stale entries in scope, and the stale warning counts only entries in scope. main.bal has 1 ballerina:13 and 2 ballerina:1, tests/main_test.bal 1 ballerina:1. Needs scan 0.15.0+.",
+  "tags": [
+    "package",
+    "baseline",
+    "rules"
+  ],
+  "upstream": [
+    "BaselineTest#testScopeOfWrites",
+    "BEP 1498: Finding fingerprints and baseline adoption (ballerina-spec/beps/tool-scan/1498_scan_baseline.md)"
+  ],
+  "setup": [
+    {
+      "name": "Lock dependencies",
+      "run": "bal build",
+      "cwd": "pkg"
+    }
+  ],
+  "steps": [
+    {
+      "name": "--create-baseline",
+      "run": "bal scan --create-baseline",
+      "cwd": "pkg",
+      "note": "Saves 4 entries, including tests/main_test.bal."
+    },
+    {
+      "name": "Secret fixed",
+      "edit": [
+        "copy",
+        "../variants/no-secret/main.bal",
+        "main.bal"
+      ],
+      "cwd": "pkg"
+    },
+    {
+      "name": "--prune-baseline --exclude-rules=ballerina:13",
+      "run": "bal scan --prune-baseline --exclude-rules=ballerina:13",
+      "cwd": "pkg",
+      "note": "The ballerina:13 entry is out of scope, so it is not removed: \"The baseline has no entries to remove\", 4 entries kept."
+    },
+    {
+      "name": "--exclude-tests",
+      "run": "bal scan --exclude-tests",
+      "cwd": "pkg",
+      "note": "The test entry is out of scope: 0 new issue(s), 2 in baseline, and only 1 stale entry (the secret)."
+    },
+    {
+      "name": "--create-baseline --include-rules=ballerina:13",
+      "run": "bal scan --create-baseline --include-rules=ballerina:13",
+      "cwd": "pkg",
+      "note": "Replaces only the ballerina:13 entries (now none) and keeps the 3 ballerina:1 entries: \"Saved 3 entries\"."
+    },
+    {
+      "name": "Scan",
+      "run": "bal scan",
+      "cwd": "pkg",
+      "note": "0 new issue(s), 3 in baseline, no warning."
+    },
+    {
+      "name": "--create-baseline --exclude-tests",
+      "run": "bal scan --create-baseline --exclude-tests",
+      "cwd": "pkg",
+      "note": "The test entry is kept, though the tests were not scanned: \"The baseline already holds these 3 entries\"."
+    }
+  ]
+}

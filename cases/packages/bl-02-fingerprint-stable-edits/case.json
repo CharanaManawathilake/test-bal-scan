@@ -1,0 +1,173 @@
+{
+  "title": "Fingerprints: edits that keep every finding in the baseline",
+  "description": "Creates a baseline, then applies each edit from the \"What changes the fingerprint\" table of BEP 1498 that must NOT change the fingerprint, and scans again. Every scan after an edit should print 0 new issue(s), 4 in baseline and exit 0 ([gate] failOnSeverity = \"LOW\" makes any new finding exit 1). The issues: ballerina:13 on the module-level password (line 1), on dbPassword and on the multi-line apiSecret template, and ballerina:1 on the checkpanic in main. Each edit starts from the base sources, so the edits do not add up. Open the Baseline & fingerprints panel to see each finding keep its fingerprint while its line moves. Needs scan 0.15.0+.",
+  "tags": [
+    "package",
+    "baseline",
+    "fingerprints"
+  ],
+  "upstream": [
+    "BaselineTest#testUnrelatedEdits",
+    "FingerprintsTest",
+    "BEP 1498: Finding fingerprints and baseline adoption (ballerina-spec/beps/tool-scan/1498_scan_baseline.md)"
+  ],
+  "setup": [
+    {
+      "name": "Write the base sources",
+      "edit": [
+        "use",
+        "../variants/base"
+      ],
+      "cwd": "pkg"
+    },
+    {
+      "name": "Lock dependencies",
+      "run": "bal build",
+      "cwd": "pkg"
+    }
+  ],
+  "steps": [
+    {
+      "name": "--create-baseline",
+      "run": "bal scan --create-baseline",
+      "cwd": "pkg",
+      "note": "Saves 4 entries. Never trips the gate, though Scan.toml sets failOnSeverity = \"LOW\"; every result is unchanged."
+    },
+    {
+      "name": "Lines and a function added above",
+      "edit": [
+        "use",
+        "../variants/lines-above"
+      ],
+      "cwd": "pkg"
+    },
+    {
+      "name": "Scan: lines and a function added above",
+      "run": "bal scan",
+      "cwd": "pkg",
+      "note": "Every finding moves down 6 lines; its fingerprint does not change. Expect 0 new issue(s), 4 in baseline, exit 0."
+    },
+    {
+      "name": "Functions moved within the file",
+      "edit": [
+        "use",
+        "../variants/function-moved"
+      ],
+      "cwd": "pkg"
+    },
+    {
+      "name": "Scan: functions moved within the file",
+      "run": "bal scan",
+      "cwd": "pkg",
+      "note": "connect() and notes() moved below main(). Expect 0 new issue(s), 4 in baseline, exit 0."
+    },
+    {
+      "name": "Re-indented, spacing inside lines",
+      "edit": [
+        "use",
+        "../variants/reindented"
+      ],
+      "cwd": "pkg"
+    },
+    {
+      "name": "Scan: re-indented, spacing inside lines",
+      "run": "bal scan",
+      "cwd": "pkg",
+      "note": "Tabs, extra spaces between tokens and `getResult( )`. The text of the tokens is unchanged; the second line of the template is left alone, since spaces there are template content. Expect 0 new issue(s), 4 in baseline, exit 0."
+    },
+    {
+      "name": "Comments and edits on other lines",
+      "edit": [
+        "use",
+        "../variants/other-lines"
+      ],
+      "cwd": "pkg"
+    },
+    {
+      "name": "Scan: comments and edits on other lines",
+      "run": "bal scan",
+      "cwd": "pkg",
+      "note": "Comments and a blank line added, and the line after the flagged one edited. Expect 0 new issue(s), 4 in baseline, exit 0."
+    },
+    {
+      "name": "Comment at the end of a flagged line",
+      "edit": [
+        "use",
+        "../variants/trailing-comment"
+      ],
+      "cwd": "pkg"
+    },
+    {
+      "name": "Scan: comment at the end of a flagged line",
+      "run": "bal scan",
+      "cwd": "pkg",
+      "note": "A comment is minutiae, not a token. Expect 0 new issue(s), 4 in baseline, exit 0."
+    },
+    {
+      "name": "Enclosing functions renamed",
+      "edit": [
+        "use",
+        "../variants/renamed-functions"
+      ],
+      "cwd": "pkg"
+    },
+    {
+      "name": "Scan: enclosing functions renamed",
+      "run": "bal scan",
+      "cwd": "pkg",
+      "note": "connect -> openConnection, notes -> releaseNotes. The enclosing construct is not hashed. Expect 0 new issue(s), 4 in baseline, exit 0."
+    },
+    {
+      "name": "CRLF checkout",
+      "edit": [
+        "use",
+        "../variants/base"
+      ],
+      "cwd": "pkg"
+    },
+    {
+      "name": "Convert to CRLF",
+      "edit": [
+        "crlf",
+        "main.bal"
+      ],
+      "cwd": "pkg",
+      "note": "Also puts a CRLF inside the multi-line template token, which the fingerprint replaces by LF."
+    },
+    {
+      "name": "Scan: CRLF line endings",
+      "run": "bal scan",
+      "cwd": "pkg",
+      "note": "Expect 0 new issue(s), 4 in baseline."
+    },
+    {
+      "name": "--prune-baseline",
+      "run": "bal scan --prune-baseline",
+      "cwd": "pkg",
+      "note": "Every entry still matches: \"The baseline has no entries to remove\", and the file is not rewritten."
+    },
+    {
+      "name": "Byte order mark",
+      "edit": [
+        "use",
+        "../variants/base"
+      ],
+      "cwd": "pkg"
+    },
+    {
+      "name": "Add a BOM",
+      "edit": [
+        "bom",
+        "main.bal"
+      ],
+      "cwd": "pkg",
+      "note": "The first line holds a flagged secret, so the BOM is on a hashed line."
+    },
+    {
+      "name": "Scan: byte order mark",
+      "run": "bal scan",
+      "cwd": "pkg",
+      "note": "Recorded with 2201.13.2: the compiler does not skip a BOM (error: unknown type '?string' at 1:1), so the scan stops before any fingerprint is computed. The fingerprint's BOM handling can only be reached once the compiler accepts it."
+    }
+  ]
+}
